@@ -19,7 +19,7 @@ Flag Ruby19
     Default: False
 
 library
-  exposed-modules:      Foreign.Ruby, Foreign.Ruby.Bindings, Foreign.Ruby.Helpers, Foreign.Ruby.Data
+  exposed-modules:      Foreign.Ruby, Foreign.Ruby.Bindings, Foreign.Ruby.Helpers
   ghc-options:          -Wall
   extensions:           BangPatterns, OverloadedStrings
   build-depends:        base ==4.6.*, aeson, bytestring, attoparsec, vector, text, unordered-containers
