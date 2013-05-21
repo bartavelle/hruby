@@ -136,13 +136,23 @@ instance ToRuby Value where
         return hash
 
 embedHaskellValue :: a -> IO RValue
-embedHaskellValue = fmap (castPtr . castStablePtrToPtr) . newStablePtr
+embedHaskellValue v = do
+    intptr <- fmap (fromIntegral . ptrToIntPtr . castStablePtrToPtr) (newStablePtr v) :: IO Integer
+    toRuby intptr
 
 freeHaskellValue :: RValue -> IO ()
-freeHaskellValue = freeStablePtr . castPtrToStablePtr . castPtr
+freeHaskellValue v = do
+    intptr <- fromRuby v :: IO (Maybe Integer)
+    case intptr of
+        Just i -> freeStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
+        Nothing -> error "Could not decode embedded value during free!"
 
 extractHaskellValue :: RValue -> IO a
-extractHaskellValue = deRefStablePtr . castPtrToStablePtr . castPtr
+extractHaskellValue v = do
+    intptr <- fromRuby v :: IO (Maybe Integer)
+    case intptr of
+        Just i -> deRefStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
+        Nothing -> error "Could not decode embedded value!"
 
 rb_string_value_cstr :: RValue -> IO String
 rb_string_value_cstr v = do
@@ -231,6 +241,7 @@ safeMethodCall classname methodname args =
             dispatch <- malloc
             poke dispatch (ShimDispatch classname methodname args)
             pstatus <- malloc
+            poke pstatus 0
             o <- c_rb_protect safeCallback (castPtr dispatch) pstatus
             status <- peek pstatus
             free dispatch
@@ -238,7 +249,6 @@ safeMethodCall classname methodname args =
             if status == 0
                 then return (Right o)
                 else do
-                    putStrLn ("status: " ++ show status)
                     err <- showErrorStack
                     return (Left (err,o))
 
@@ -246,7 +256,7 @@ showErrorStack :: IO String
 showErrorStack = do
     runtimeerror <- rb_gv_get "$!"
     m <- if runtimeerror == rbNil
-             then return "nil"
+             then return "Unknown runtime error"
              else do
                  message <- rb_intern "message"
                  fmap (fromMaybe "undeserializable error") (rb_funcall runtimeerror message [] >>= fromRuby)

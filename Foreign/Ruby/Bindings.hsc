@@ -161,6 +161,7 @@ foreign import ccall "rb_intern" c_rb_intern :: CString -> IO RID
 foreign import ccall "rb_id2name" rb_id2name :: RID -> IO CString
 foreign import ccall "rb_string_value_ptr" c_rb_string_value_ptr :: Ptr RValue -> IO CString
 foreign import ccall "&rb_cObject" rb_cObject :: Ptr RValue
+foreign import ccall "&ruby_errinfo" ruby_errinfo :: Ptr RValue
 foreign import ccall "rb_define_class" c_rb_define_class :: CString -> RValue -> IO RValue
 foreign import ccall "rb_define_method" c_rb_define_method :: RValue -> CString -> FunPtr a -> Int -> IO ()
 foreign import ccall "rb_define_global_function" c_rb_define_global_function :: CString -> FunPtr a -> Int -> IO ()
@@ -180,6 +181,9 @@ foreign import ccall "rb_hash_aset" rb_hash_aset :: RValue -> RValue -> RValue -
 
 sym2id :: RValue -> RID
 sym2id x = (fromIntegral (ptrToIntPtr x)) `shiftR` 8
+
+id2sym :: RID -> RValue
+id2sym x = intPtrToPtr (fromIntegral ( (x `shiftL` 8) .|. 0x0e ))
 
 rbFalse :: RValue
 rbFalse = intPtrToPtr 0
