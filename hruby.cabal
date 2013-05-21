@@ -5,7 +5,7 @@ name:                hruby
 version:             0.0.2
 synopsis:            You might want to embed Ruby in your Haskell program. This is a bad idea, but who am I to argue ?
 -- description:         
-license:             BSD
+license:             BSD3
 license-file:        LICENSE
 author:              Simon Marechal
 maintainer:          bartavelle@gmail.com
