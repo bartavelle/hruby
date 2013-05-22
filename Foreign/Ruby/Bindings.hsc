@@ -7,25 +7,10 @@ module Foreign.Ruby.Bindings where
 import Foreign
 import Foreign.C
 
-type RValue = Ptr RBasic
+type RValue = Ptr CULong
 type RID = CULong
 
-data RBasic = RBasic { _flags :: CULong
-                     , _klass :: RValue
-                     }
-
-instance Storable RBasic where
-    sizeOf _ = (#size struct RBasic)
-    alignment = sizeOf
-    peek ptr = do f <- (#peek struct RBasic, flags) ptr
-                  k <- (#peek struct RBasic, klass) ptr
-                  return (RBasic f k)
-    poke ptr (RBasic f k) = do
-        (#poke struct RBasic, flags) ptr f
-        (#poke struct RBasic, klass) ptr k
-
 data ShimDispatch = ShimDispatch String String [RValue]
-
 instance Storable ShimDispatch where
     sizeOf _ = (#size struct s_dispatch)
     alignment = sizeOf
@@ -169,13 +154,14 @@ foreign import ccall "rb_const_get"              rb_const_get                :: 
 foreign import ccall "&safeCall"                 safeCallback                :: FunPtr (RValue -> IO RValue)
 foreign import ccall "rb_protect"                c_rb_protect                :: FunPtr (RValue -> IO RValue) -> RValue -> Ptr Int -> IO RValue
 foreign import ccall "rb_string_value_cstr"      c_rb_string_value_cstr      :: Ptr RValue -> IO CString
+foreign import ccall "rb_ary_new"                rb_ary_new                  :: IO RValue
 foreign import ccall "rb_ary_new2"               rb_ary_new2                 :: CLong -> IO RValue
 foreign import ccall "rb_ary_push"               rb_ary_push                 :: RValue -> RValue -> IO RValue
 foreign import ccall "rb_ary_entry"              rb_ary_entry                :: RValue -> CLong -> IO RValue
 foreign import ccall "rb_hash_foreach"           rb_hash_foreach             :: RValue -> FunPtr a -> RValue -> IO ()
 foreign import ccall "rb_big2str"                rb_big2str                  :: RValue -> CInt -> IO RValue
 foreign import ccall "rb_cstr_to_inum"           rb_cstr_to_inum             :: CString -> CInt -> CInt -> IO RValue
-foreign import ccall "rb_float_new"              rb_float_new                :: CDouble -> IO RValue
+foreign import ccall "rb_float_new"              rb_float_new                :: Double -> IO RValue
 foreign import ccall "rb_hash_new"               rb_hash_new                 :: IO RValue
 foreign import ccall "rb_hash_aset"              rb_hash_aset                :: RValue -> RValue -> RValue -> IO RValue
 
@@ -198,7 +184,7 @@ rtype rv | ptrToIntPtr rv .&. 1 == 1 = return RFixNum
          | ptrToIntPtr rv  == 2 = return RTrue
          | ptrToIntPtr rv  == 4 = return RNil
          | ptrToIntPtr rv .&. 0xff == 0x0e = return RSymbol
-         | otherwise = fmap (RBuiltin . intToBuiltin . (.&. 0x3f) . _flags) (peek rv)
+         | otherwise = fmap (RBuiltin . intToBuiltin . (.&. 0x3f)) (peek rv)
 
 
 peekArrayLength :: RValue -> IO CLong

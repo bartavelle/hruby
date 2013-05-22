@@ -39,12 +39,11 @@ instance FromRuby a => FromRuby [a] where
         t <- rtype v
         case t of
             RBuiltin RARRAY -> fromRubyArray v
-            _ -> return Nothing
+            _ -> putStrLn ("not an array! " ++ show t) >> return Nothing
 instance ToRuby a => ToRuby [a] where
     toRuby lst = do
         arr <- rb_ary_new2 (fromIntegral (length lst))
-        mapM_ (toRuby >=> rb_ary_push arr) lst
-        return arr
+        foldM (\curarr v -> toRuby v >>= rb_ary_push curarr) arr lst
 
 instance FromRuby BS.ByteString where
     fromRuby v = do
@@ -64,6 +63,11 @@ instance FromRuby T.Text where
     fromRuby = fmap (fmap T.decodeUtf8) . fromRuby
 instance ToRuby T.Text where
     toRuby = toRuby . T.encodeUtf8
+
+instance ToRuby Double where
+    toRuby = rb_float_new
+instance FromRuby Double where
+    fromRuby = fmap Just . peekRFloatValue
 
 instance FromRuby Integer where
     fromRuby = fromRubyIntegral
@@ -89,12 +93,13 @@ instance FromRuby Value where
             RBuiltin RTRUE   -> return (Just (Bool True))
             RBuiltin RFALSE  -> return (Just (Bool False))
             RBuiltin RUNDEF  -> return (Just Null)
-            RBuiltin RFLOAT  -> fmap (Just . Number . D) (peekRFloatValue v)
+            RBuiltin RFLOAT  -> fmap (fmap (Number . D)) (fromRuby v)
             RBuiltin RBIGNUM -> do
                 bs <- rb_big2str v 10 >>= fromRuby
                 case fmap BS.readInteger bs of
                     Just (Just (x,"")) -> return (Just (Number (I x)))
                     _ -> return Nothing
+            RBuiltin RNONE -> return (Just Null)
             RBuiltin RHASH   -> do
                 var <- newIORef []
                 let appender :: RValue -> RValue -> RValue -> IO Int
@@ -104,7 +109,7 @@ instance FromRuby Value where
                         vv <- fromRuby val
                         case (vk, vv) of
                             (Just jk, Just jv) -> writeIORef var ( (jk,jv) : vvar ) >> return 0
-                            _ -> writeIORef var [] >> return 1
+                            _ -> return 1
                     toHash = Object . HM.fromList
                 wappender <- mkRegisteredCB3 appender
                 rb_hash_foreach v wappender rbNil
@@ -120,7 +125,7 @@ instance ToRuby Value where
         if x >= maxRubyInt
             then BS.useAsCString (BS.pack (show x)) (\cs -> rb_cstr_to_inum cs 10 0)
             else toRubyIntegral x
-    toRuby (Number (D x)) = rb_float_new (uncurry encodeFloat (decodeFloat x))
+    toRuby (Number (D x)) = toRuby x
     toRuby (String t) = let bs = T.encodeUtf8 t
                         in  BS.useAsCString bs c_rb_str_new2
     toRuby Null = return rbNil
@@ -175,9 +180,8 @@ rb_str_new2 str = withCString str c_rb_str_new2
 
 rb_load_protect :: String -> Int -> IO Int
 rb_load_protect rv a = do
-    bptr <- malloc
+    bptr <- new 0
     rvs <- rb_str_new2 rv
-    poke bptr 0
     c_rb_load_protect rvs a bptr
     status <- peek bptr
     free bptr
@@ -212,8 +216,7 @@ rb_intern s = withCString s c_rb_intern
 
 rb_string_value_ptr :: RValue -> IO String
 rb_string_value_ptr rv = do
-    rvp <- malloc
-    poke rvp rv
+    rvp <- new rv
     o <- c_rb_string_value_ptr rvp >>= peekCString
     free rvp
     return o
@@ -238,10 +241,8 @@ safeMethodCall classname methodname args =
     if length args > 16
         then return (Left ("too many arguments", rbNil))
         else do
-            dispatch <- malloc
-            poke dispatch (ShimDispatch classname methodname args)
-            pstatus <- malloc
-            poke pstatus 0
+            dispatch <- new (ShimDispatch classname methodname args)
+            pstatus <- new 0
             o <- c_rb_protect safeCallback (castPtr dispatch) pstatus
             status <- peek pstatus
             free dispatch

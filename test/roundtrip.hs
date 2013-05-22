@@ -11,14 +11,10 @@ import Data.Attoparsec.Number
 import qualified Data.Vector as V
 
 instance Arbitrary Number where
-    arbitrary = do
-        t <- choose (0,1) :: Gen Int
-        case t of
-            0 -> fmap D arbitrary
-            _ -> fmap I arbitrary
+    arbitrary = frequency [ (1, fmap D arbitrary) , (0, fmap I arbitrary) ]
 
 subvalue :: Gen Value
-subvalue = frequency [(100,s),(10,b),(50,n),(1,h),(1,a)]
+subvalue = frequency [(0,s),(0,b),(1,n),(0,h),(0,a)]
 
 str :: Gen T.Text
 str = fmap T.pack (listOf (elements (['A'..'Z'] ++ ['a' .. 'z'] ++ ['0'..'9'])))
@@ -42,20 +38,37 @@ h = fmap object $ do
         return (zip k v)
 
 instance Arbitrary Value where
-    arbitrary = frequency [(100,s),(5,a),(10,b),(50,n),(10,h)]
+    -- arbitrary = frequency [(100,s),(5,a),(10,b),(50,n),(10,h)]
+    arbitrary = frequency [(0,s),(1,a),(0,b),(0,n),(0,h)]
+
+roundTripS2 :: Property
+roundTripS2 = monadicIO $ do
+    lst <- pick (listOf arbitrary :: Gen [Double])
+    arr <- run (rb_ary_new2 (fromIntegral (length lst)))
+    forM_ lst $ \v -> run $ do
+        print v
+        rv <- toRuby v
+        arr <- rb_ary_push arr rv
+        k <- fromRuby arr :: IO (Maybe [Double])
+        when (k == Nothing) (print k)
+    rlst <- run (fromRuby arr)
+    assert (Just lst == rlst)
+
+roundTripS :: Property
+roundTripS = monadicIO $ do
+    v <- pick (listOf str :: Gen [T.Text])
+    out <- run (toRuby v >>= fromRuby)
+    run (print out)
+    assert (Just v == out)
 
 roundTrip :: Property
 roundTrip = monadicIO $ do
     v <- pick (arbitrary :: Gen Value)
-    run (print v)
     rub <- run (toRuby v)
-    run $ putStrLn "toRuby"
     nxt <- run (safeMethodCall "TestClass" "testfunc" [rub])
-    run $ putStrLn "call"
     case nxt of
         Right x -> do
             out <- run (fromRuby x)
-            run (print out)
             assert (Just v == out)
         Left (rr,_) -> run (print rr) >> assert (1 == 2)
 
@@ -65,5 +78,5 @@ main = do
     ruby_init_loadpath
     s <- rb_load_protect "test/test.rb" 0
     unless (s == 0) (showErrorStack >>= error)
-    quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTrip
+    quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTripS2
     ruby_finalize
