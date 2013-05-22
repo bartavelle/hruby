@@ -145,39 +145,39 @@ foreign import ccall "wrapper" mkRegistered2 :: Registered2 -> IO (FunPtr Regist
 type RegisteredCB3 = RValue -> RValue -> RValue -> IO Int
 foreign import ccall "wrapper" mkRegisteredCB3 :: RegisteredCB3 -> IO (FunPtr RegisteredCB3)
 
-foreign import ccall "ruby_init" ruby_init :: IO ()
-foreign import ccall "ruby_finalize" ruby_finalize :: IO ()
-foreign import ccall "ruby_init_loadpath" ruby_init_loadpath :: IO ()
-foreign import ccall "rb_str_new2" c_rb_str_new2 :: CString -> IO RValue
-foreign import ccall "rb_load_protect" c_rb_load_protect :: RValue -> Int -> Ptr Int -> IO ()
-foreign import ccall "rb_funcall"  c_rb_funcall_0 :: RValue -> RID -> Int -> IO RValue
-foreign import ccall "rb_funcall"  c_rb_funcall_1 :: RValue -> RID -> Int -> RValue -> IO RValue
-foreign import ccall "rb_funcall"  c_rb_funcall_2 :: RValue -> RID -> Int -> RValue -> RValue -> IO RValue
-foreign import ccall "rb_funcall"  c_rb_funcall_3 :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> IO RValue
-foreign import ccall "rb_funcall"  c_rb_funcall_4 :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> IO RValue
-foreign import ccall "rb_funcall"  c_rb_funcall_5 :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> RValue -> IO RValue
-foreign import ccall "rb_gv_get" c_rb_gv_get :: CString -> IO RValue
-foreign import ccall "rb_intern" c_rb_intern :: CString -> IO RID
-foreign import ccall "rb_id2name" rb_id2name :: RID -> IO CString
-foreign import ccall "rb_string_value_ptr" c_rb_string_value_ptr :: Ptr RValue -> IO CString
-foreign import ccall "&rb_cObject" rb_cObject :: Ptr RValue
-foreign import ccall "&ruby_errinfo" ruby_errinfo :: Ptr RValue
-foreign import ccall "rb_define_class" c_rb_define_class :: CString -> RValue -> IO RValue
-foreign import ccall "rb_define_method" c_rb_define_method :: RValue -> CString -> FunPtr a -> Int -> IO ()
+foreign import ccall "ruby_init"                 ruby_init                   :: IO ()
+foreign import ccall "ruby_finalize"             ruby_finalize               :: IO ()
+foreign import ccall "ruby_init_loadpath"        ruby_init_loadpath          :: IO ()
+foreign import ccall "rb_str_new2"               c_rb_str_new2               :: CString -> IO RValue
+foreign import ccall "rb_load_protect"           c_rb_load_protect           :: RValue -> Int -> Ptr Int -> IO ()
+foreign import ccall "rb_funcall"                c_rb_funcall_0              :: RValue -> RID -> Int -> IO RValue
+foreign import ccall "rb_funcall"                c_rb_funcall_1              :: RValue -> RID -> Int -> RValue -> IO RValue
+foreign import ccall "rb_funcall"                c_rb_funcall_2              :: RValue -> RID -> Int -> RValue -> RValue -> IO RValue
+foreign import ccall "rb_funcall"                c_rb_funcall_3              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> IO RValue
+foreign import ccall "rb_funcall"                c_rb_funcall_4              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> IO RValue
+foreign import ccall "rb_funcall"                c_rb_funcall_5              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> RValue -> IO RValue
+foreign import ccall "rb_gv_get"                 c_rb_gv_get                 :: CString -> IO RValue
+foreign import ccall "rb_intern"                 c_rb_intern                 :: CString -> IO RID
+foreign import ccall "rb_id2name"                rb_id2name                  :: RID -> IO CString
+foreign import ccall "rb_string_value_ptr"       c_rb_string_value_ptr       :: Ptr RValue -> IO CString
+foreign import ccall "&rb_cObject"               rb_cObject                  :: Ptr RValue
+foreign import ccall "&ruby_errinfo"             ruby_errinfo                :: Ptr RValue
+foreign import ccall "rb_define_class"           c_rb_define_class           :: CString -> RValue -> IO RValue
+foreign import ccall "rb_define_method"          c_rb_define_method          :: RValue -> CString -> FunPtr a -> Int -> IO ()
 foreign import ccall "rb_define_global_function" c_rb_define_global_function :: CString -> FunPtr a -> Int -> IO ()
-foreign import ccall "rb_const_get" rb_const_get :: RValue -> RID -> IO RValue
-foreign import ccall "&safeCall" safeCallback :: FunPtr (RValue -> IO RValue)
-foreign import ccall "rb_protect" c_rb_protect :: FunPtr (RValue -> IO RValue) -> RValue -> Ptr Int -> IO RValue
-foreign import ccall "rb_string_value_cstr" c_rb_string_value_cstr :: Ptr RValue -> IO CString
-foreign import ccall "rb_ary_new2" rb_ary_new2 :: CLong -> IO RValue
-foreign import ccall "rb_ary_push" rb_ary_push :: RValue -> RValue -> IO RValue
-foreign import ccall "rb_ary_entry" rb_ary_entry :: RValue -> CLong -> IO RValue
-foreign import ccall "rb_hash_foreach" rb_hash_foreach :: RValue -> FunPtr a -> RValue -> IO ()
-foreign import ccall "rb_big2str" rb_big2str :: RValue -> CInt -> IO RValue
-foreign import ccall "rb_cstr_to_inum" rb_cstr_to_inum :: CString -> CInt -> CInt -> IO RValue
-foreign import ccall "rb_float_new" rb_float_new :: CDouble -> IO RValue
-foreign import ccall "rb_hash_new" rb_hash_new :: IO RValue
-foreign import ccall "rb_hash_aset" rb_hash_aset :: RValue -> RValue -> RValue -> IO RValue
+foreign import ccall "rb_const_get"              rb_const_get                :: RValue -> RID -> IO RValue
+foreign import ccall "&safeCall"                 safeCallback                :: FunPtr (RValue -> IO RValue)
+foreign import ccall "rb_protect"                c_rb_protect                :: FunPtr (RValue -> IO RValue) -> RValue -> Ptr Int -> IO RValue
+foreign import ccall "rb_string_value_cstr"      c_rb_string_value_cstr      :: Ptr RValue -> IO CString
+foreign import ccall "rb_ary_new2"               rb_ary_new2                 :: CLong -> IO RValue
+foreign import ccall "rb_ary_push"               rb_ary_push                 :: RValue -> RValue -> IO RValue
+foreign import ccall "rb_ary_entry"              rb_ary_entry                :: RValue -> CLong -> IO RValue
+foreign import ccall "rb_hash_foreach"           rb_hash_foreach             :: RValue -> FunPtr a -> RValue -> IO ()
+foreign import ccall "rb_big2str"                rb_big2str                  :: RValue -> CInt -> IO RValue
+foreign import ccall "rb_cstr_to_inum"           rb_cstr_to_inum             :: CString -> CInt -> CInt -> IO RValue
+foreign import ccall "rb_float_new"              rb_float_new                :: CDouble -> IO RValue
+foreign import ccall "rb_hash_new"               rb_hash_new                 :: IO RValue
+foreign import ccall "rb_hash_aset"              rb_hash_aset                :: RValue -> RValue -> RValue -> IO RValue
 
 sym2id :: RValue -> RID
 sym2id x = (fromIntegral (ptrToIntPtr x)) `shiftR` 8

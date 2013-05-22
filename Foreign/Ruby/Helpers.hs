@@ -108,9 +108,8 @@ instance FromRuby Value where
                     toHash = Object . HM.fromList
                 wappender <- mkRegisteredCB3 appender
                 rb_hash_foreach v wappender rbNil
-                readIORef var >>= \x -> case x of
-                                            [] -> return Nothing
-                                            _ -> return (Just (toHash x))
+                freeHaskellFunPtr wappender
+                fmap (Just . toHash) (readIORef var)
             _ -> do
                 putStrLn ("Could not decode: " ++ show t)
                 return Nothing
@@ -122,7 +121,8 @@ instance ToRuby Value where
             then BS.useAsCString (BS.pack (show x)) (\cs -> rb_cstr_to_inum cs 10 0)
             else toRubyIntegral x
     toRuby (Number (D x)) = rb_float_new (uncurry encodeFloat (decodeFloat x))
-    toRuby (String t) = BS.useAsCString (T.encodeUtf8 t) c_rb_str_new2
+    toRuby (String t) = let bs = T.encodeUtf8 t
+                        in  BS.useAsCString bs c_rb_str_new2
     toRuby Null = return rbNil
     toRuby (Bool True) = return rbTrue
     toRuby (Bool False) = return rbFalse
