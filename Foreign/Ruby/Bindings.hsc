@@ -156,6 +156,7 @@ foreign import ccall "rb_protect"                c_rb_protect                :: 
 foreign import ccall "rb_string_value_cstr"      c_rb_string_value_cstr      :: Ptr RValue -> IO CString
 foreign import ccall "rb_ary_new"                rb_ary_new                  :: IO RValue
 foreign import ccall "rb_ary_new2"               rb_ary_new2                 :: CLong -> IO RValue
+foreign import ccall "rb_ary_new4"               rb_ary_new4                 :: CLong -> Ptr RValue -> IO RValue
 foreign import ccall "rb_ary_push"               rb_ary_push                 :: RValue -> RValue -> IO RValue
 foreign import ccall "rb_ary_entry"              rb_ary_entry                :: RValue -> CLong -> IO RValue
 foreign import ccall "rb_hash_foreach"           rb_hash_foreach             :: RValue -> FunPtr a -> RValue -> IO ()
@@ -164,6 +165,7 @@ foreign import ccall "rb_cstr_to_inum"           rb_cstr_to_inum             :: 
 foreign import ccall "rb_float_new"              rb_float_new                :: Double -> IO RValue
 foreign import ccall "rb_hash_new"               rb_hash_new                 :: IO RValue
 foreign import ccall "rb_hash_aset"              rb_hash_aset                :: RValue -> RValue -> RValue -> IO RValue
+foreign import ccall "rb_define_module"          c_rb_define_module          :: CString -> IO ()
 
 sym2id :: RValue -> RID
 sym2id x = (fromIntegral (ptrToIntPtr x)) `shiftR` 8

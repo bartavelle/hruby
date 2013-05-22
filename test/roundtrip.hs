@@ -41,24 +41,10 @@ instance Arbitrary Value where
     -- arbitrary = frequency [(100,s),(5,a),(10,b),(50,n),(10,h)]
     arbitrary = frequency [(0,s),(1,a),(0,b),(0,n),(0,h)]
 
-roundTripS2 :: Property
-roundTripS2 = monadicIO $ do
-    lst <- pick (listOf arbitrary :: Gen [Double])
-    arr <- run (rb_ary_new2 (fromIntegral (length lst)))
-    forM_ lst $ \v -> run $ do
-        print v
-        rv <- toRuby v
-        arr <- rb_ary_push arr rv
-        k <- fromRuby arr :: IO (Maybe [Double])
-        when (k == Nothing) (print k)
-    rlst <- run (fromRuby arr)
-    assert (Just lst == rlst)
-
 roundTripS :: Property
 roundTripS = monadicIO $ do
-    v <- pick (listOf str :: Gen [T.Text])
+    v <- pick (listOf arbitrary :: Gen [Value])
     out <- run (toRuby v >>= fromRuby)
-    run (print out)
     assert (Just v == out)
 
 roundTrip :: Property
@@ -70,13 +56,14 @@ roundTrip = monadicIO $ do
         Right x -> do
             out <- run (fromRuby x)
             assert (Just v == out)
-        Left (rr,_) -> run (print rr) >> assert (1 == 2)
+        Left (rr,_) -> run (print rr) >> assert False
 
 main :: IO ()
 main = do
     ruby_init
     ruby_init_loadpath
-    s <- rb_load_protect "test/test.rb" 0
-    unless (s == 0) (showErrorStack >>= error)
-    quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTripS2
+    rb_define_module "test"
+    st <- rb_load_protect "test/test.rb" 0
+    unless (st == 0) (showErrorStack >>= error)
+    quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTripS
     ruby_finalize

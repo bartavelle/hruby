@@ -40,10 +40,11 @@ instance FromRuby a => FromRuby [a] where
         case t of
             RBuiltin RARRAY -> fromRubyArray v
             _ -> putStrLn ("not an array! " ++ show t) >> return Nothing
+
 instance ToRuby a => ToRuby [a] where
     toRuby lst = do
-        arr <- rb_ary_new2 (fromIntegral (length lst))
-        foldM (\curarr v -> toRuby v >>= rb_ary_push curarr) arr lst
+        vals <- mapM toRuby lst
+        Foreign.withArray vals (rb_ary_new4 (fromIntegral (length lst)))
 
 instance FromRuby BS.ByteString where
     fromRuby v = do
@@ -177,6 +178,9 @@ rb_define_class str rv = withCString str (\s -> c_rb_define_class s rv)
 
 rb_str_new2 :: String -> IO RValue
 rb_str_new2 str = withCString str c_rb_str_new2
+
+rb_define_module :: String -> IO ()
+rb_define_module str = withCString str c_rb_define_module
 
 rb_load_protect :: String -> Int -> IO Int
 rb_load_protect rv a = do
