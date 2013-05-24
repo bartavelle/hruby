@@ -271,4 +271,13 @@ showErrorStack = do
               else fmap (fromMaybe []) (fromRuby rbt)
     return (T.unpack (T.unlines (m : bt)))
 
+setGC :: Bool -> IO (Either (String, RValue) RValue)
+setGC nw = do
+    let method = if nw
+                     then "enable"
+                     else "disable"
+    safeMethodCall "GC" method []
+
+startGC :: IO ()
+startGC = Control.Monad.void (safeMethodCall "GC" "start" [])
 

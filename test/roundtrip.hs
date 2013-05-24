@@ -11,10 +11,10 @@ import Data.Attoparsec.Number
 import qualified Data.Vector as V
 
 instance Arbitrary Number where
-    arbitrary = frequency [ (1, fmap D arbitrary) , (0, fmap I arbitrary) ]
+    arbitrary = frequency [ (1, fmap D arbitrary) , (1, fmap I arbitrary) ]
 
 subvalue :: Gen Value
-subvalue = frequency [(0,s),(0,b),(1,n),(0,h),(0,a)]
+subvalue = frequency [(50,s),(20,b),(20,n),(1,h),(1,a)]
 
 str :: Gen T.Text
 str = fmap T.pack (listOf (elements (['A'..'Z'] ++ ['a' .. 'z'] ++ ['0'..'9'])))
@@ -38,23 +38,19 @@ h = fmap object $ do
         return (zip k v)
 
 instance Arbitrary Value where
-    -- arbitrary = frequency [(100,s),(5,a),(10,b),(50,n),(10,h)]
-    arbitrary = frequency [(0,s),(1,a),(0,b),(0,n),(0,h)]
-
-roundTripS :: Property
-roundTripS = monadicIO $ do
-    v <- pick (listOf arbitrary :: Gen [Value])
-    out <- run (toRuby v >>= fromRuby)
-    assert (Just v == out)
+    arbitrary = frequency [(1,s),(5,a),(1,b),(1,n),(5,h)]
 
 roundTrip :: Property
 roundTrip = monadicIO $ do
     v <- pick (arbitrary :: Gen Value)
+    void (run (setGC False))
     rub <- run (toRuby v)
     nxt <- run (safeMethodCall "TestClass" "testfunc" [rub])
     case nxt of
         Right x -> do
             out <- run (fromRuby x)
+            void (run (setGC True))
+            run startGC
             assert (Just v == out)
         Left (rr,_) -> run (print rr) >> assert False
 
@@ -65,5 +61,5 @@ main = do
     rb_define_module "test"
     st <- rb_load_protect "test/test.rb" 0
     unless (st == 0) (showErrorStack >>= error)
-    quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTripS
+    quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTrip
     ruby_finalize
