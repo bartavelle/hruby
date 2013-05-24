@@ -281,3 +281,11 @@ setGC nw = do
 startGC :: IO ()
 startGC = Control.Monad.void (safeMethodCall "GC" "start" [])
 
+freezeGC :: IO a -> IO a
+freezeGC computation = do
+    Control.Monad.void (setGC False)
+    o <- computation
+    Control.Monad.void (setGC True)
+    startGC
+    return o
+
