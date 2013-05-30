@@ -4,7 +4,6 @@ import Foreign.Ruby.Bindings
 
 import Data.Maybe (fromMaybe)
 import Foreign
-import Foreign.C
 import Data.Aeson
 import Control.Monad
 import qualified Data.Text as T
@@ -15,8 +14,16 @@ import qualified Data.Vector as V
 import Data.IORef
 import qualified Data.HashMap.Strict as HM
 
+-- | The class of things that can be converted from Ruby values. Note that
+-- there are a ton of stuff that are Ruby values, hence the `Maybe` type,
+-- as the instances will probably be incomplete.
 class FromRuby a where
+    -- | To define more instances, please look at the instances defined in
+    -- "Foreign.Ruby.Helpers".
     fromRuby :: RValue -> IO (Maybe a)
+
+-- | Whenever you use `ToRuby`, don't forget to use something like
+-- `freezeGC` or you will get random segfaults.
 class ToRuby a where
     toRuby   :: a -> IO RValue
 
@@ -79,6 +86,10 @@ instance FromRuby Int where
 instance ToRuby Int where
     toRuby = toRubyIntegral
 
+-- | This is the most complete instance that is provided in this module.
+-- Please note that it is far from being sufficient for even basic
+-- requirements. For example, the `Value` type can only encode
+-- dictionnaries with keys that can be converted to strings.
 instance FromRuby Value where
     fromRuby v = do
         t <- rtype v
@@ -141,11 +152,24 @@ instance ToRuby Value where
             rb_hash_aset hash rk rv
         return hash
 
+-- | This transforms any Haskell value into a Ruby big integer encoding the
+-- address of the corresponding `StablePtr`. This is useful when you want
+-- to pass such values to a Ruby program that will call Haskell functions.
+--
+-- This is probably a bad idea to do this. The use case is for calling
+-- Haskell functions from Ruby, using values generated from the Haskell
+-- world. If your main program is in Haskell, you should probably wrap
+-- a function partially applied with the value you would want to embed.
 embedHaskellValue :: a -> IO RValue
 embedHaskellValue v = do
     intptr <- fmap (fromIntegral . ptrToIntPtr . castStablePtrToPtr) (newStablePtr v) :: IO Integer
     toRuby intptr
 
+-- | Frees the Haskell value represented by the corresponding `RValue`.
+-- This is probably extremely unsafe to do, and will most certainly lead to
+-- exploitable security bug if you use something modified from Ruby land.
+-- You should always free the `RValue` you generated from
+-- `embedHaskellValue`.
 freeHaskellValue :: RValue -> IO ()
 freeHaskellValue v = do
     intptr <- fromRuby v :: IO (Maybe Integer)
@@ -153,77 +177,17 @@ freeHaskellValue v = do
         Just i -> freeStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
         Nothing -> error "Could not decode embedded value during free!"
 
+-- | This is unsafe as hell, so you'd better be certain this RValue has not
+-- been tempered with : GC frozen, bugfree Ruby scripts.
+--
+-- If it has been tempered by an attacker, you are probably looking at
+-- a good vector for arbitrary code execution.
 extractHaskellValue :: RValue -> IO a
 extractHaskellValue v = do
     intptr <- fromRuby v :: IO (Maybe Integer)
     case intptr of
         Just i -> deRefStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
         Nothing -> error "Could not decode embedded value!"
-
-rb_string_value_cstr :: RValue -> IO String
-rb_string_value_cstr v = do
-    pv <- new v
-    o <- c_rb_string_value_cstr pv >>= peekCString
-    free pv
-    return o
-
-rb_define_global_function :: String -> FunPtr a -> Int -> IO ()
-rb_define_global_function s f i = withCString s (\cs -> c_rb_define_global_function cs f i)
-
-rb_define_method :: RValue -> String -> FunPtr a -> Int -> IO ()
-rb_define_method r s f i = withCString s (\cs -> c_rb_define_method r cs f i)
-
-rb_define_class :: String  -> RValue -> IO RValue
-rb_define_class str rv = withCString str (\s -> c_rb_define_class s rv)
-
-rb_str_new2 :: String -> IO RValue
-rb_str_new2 str = withCString str c_rb_str_new2
-
-rb_define_module :: String -> IO ()
-rb_define_module str = withCString str c_rb_define_module
-
-rb_load_protect :: String -> Int -> IO Int
-rb_load_protect rv a = do
-    bptr <- new 0
-    rvs <- rb_str_new2 rv
-    c_rb_load_protect rvs a bptr
-    status <- peek bptr
-    free bptr
-    return status
-
-rb_funcall :: RValue -> RID -> [RValue] -> IO RValue
-rb_funcall a b []          = c_rb_funcall_0 a b 0
-rb_funcall a b [d]         = c_rb_funcall_1 a b 1 d
-rb_funcall a b [d,e]       = c_rb_funcall_2 a b 2 d e
-rb_funcall a b [d,e,f]     = c_rb_funcall_3 a b 3 d e f
-rb_funcall a b [d,e,f,g]   = c_rb_funcall_4 a b 4 d e f g
-rb_funcall a b [d,e,f,g,h] = c_rb_funcall_5 a b 5 d e f g h
-rb_funcall _ _ _           = error "Can't call functions with that many arguments"
-
-rbMethodCall :: String -> String -> [RValue] -> IO RValue
-rbMethodCall classname methodname args = do
-    c <- getClass classname
-    m <- rb_intern methodname
-    rb_funcall c m args
-
-getClass :: String -> IO RValue
-getClass s = do
-    i <- rb_intern s
-    o <- peek rb_cObject
-    rb_const_get o i
-
-rb_gv_get :: String -> IO RValue
-rb_gv_get s = withCString s c_rb_gv_get
-
-rb_intern :: String -> IO RID
-rb_intern s = withCString s c_rb_intern
-
-rb_string_value_ptr :: RValue -> IO String
-rb_string_value_ptr rv = do
-    rvp <- new rv
-    o <- c_rb_string_value_ptr rvp >>= peekCString
-    free rvp
-    return o
 
 runscript :: String -> IO (Either String ())
 runscript filename = do

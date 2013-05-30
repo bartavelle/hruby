@@ -7,7 +7,10 @@ module Foreign.Ruby.Bindings where
 import Foreign
 import Foreign.C
 
+-- | This is the type of Ruby values. It is defined as a pointer to some unsigned long, just like Ruby does. The actual value is either pointed to, or encoded in the pointer.
 type RValue = Ptr CULong
+
+-- | The Ruby ID type, mostly used for symbols.
 type RID = CULong
 
 data ShimDispatch = ShimDispatch String String [RValue]
@@ -81,7 +84,7 @@ intToBuiltin 0x3e = RSCOPE
 intToBuiltin 0x3f = RNODE
 intToBuiltin _ = RNONE
 
-
+-- | The ruby built-in types
 data RBuiltin = RNONE
               | RNIL
               | ROBJECT
@@ -109,22 +112,24 @@ data RBuiltin = RNONE
               | RNODE
               deriving (Show)
 
+-- | Ruby native types, as encoded in the Value type.
 data RType = RFixNum
            | RNil
            | RFalse
            | RTrue
            | RSymbol
            | RBuiltin RBuiltin
-
            deriving (Show)
 
 type Registered0 = IO RValue
-foreign import ccall "wrapper" mkRegistered0 :: Registered0 -> IO (FunPtr Registered0)
-
 type Registered1 = RValue -> IO RValue
-foreign import ccall "wrapper" mkRegistered1 :: Registered1 -> IO (FunPtr Registered1)
-
 type Registered2 = RValue -> RValue -> IO RValue
+
+-- | Creates a function pointer suitable for usage with `rb_define_global_function` of type `Registered0` (with 0 arguments).
+foreign import ccall "wrapper" mkRegistered0 :: Registered0 -> IO (FunPtr Registered0)
+-- | Creates a function pointer suitable for usage with `rb_define_global_function` of type `Registered1` (with 1 `RValue` arguments).
+foreign import ccall "wrapper" mkRegistered1 :: Registered1 -> IO (FunPtr Registered1)
+-- | Creates a function pointer suitable for usage with `rb_define_global_function` of type `Registered2` (with 2 `RValue` arguments).
 foreign import ccall "wrapper" mkRegistered2 :: Registered2 -> IO (FunPtr Registered2)
 
 type RegisteredCB3 = RValue -> RValue -> RValue -> IO Int
@@ -194,4 +199,74 @@ peekArrayLength = (#peek struct RArray, len)
 
 peekRFloatValue :: RValue -> IO Double
 peekRFloatValue = (#peek struct RFloat, value)
+
+rb_string_value_cstr :: RValue -> IO String
+rb_string_value_cstr v = do
+    pv <- new v
+    o <- c_rb_string_value_cstr pv >>= peekCString
+    free pv
+    return o
+
+-- | Defines a global function that can be called from the Ruby world.
+rb_define_global_function :: String -- ^ Name of the function
+                          -> FunPtr a -- ^ Pointer to the function (created with something like `makeRegistered0`, it can only take RValue)
+                          -> Int -- ^ Number of arguments the function accepts.
+                          -> IO ()
+rb_define_global_function s f i = withCString s (\cs -> c_rb_define_global_function cs f i)
+
+rb_define_method :: RValue -> String -> FunPtr a -> Int -> IO ()
+rb_define_method r s f i = withCString s (\cs -> c_rb_define_method r cs f i)
+
+rb_define_class :: String  -> RValue -> IO RValue
+rb_define_class str rv = withCString str (\s -> c_rb_define_class s rv)
+
+rb_str_new2 :: String -> IO RValue
+rb_str_new2 str = withCString str c_rb_str_new2
+
+rb_define_module :: String -> IO ()
+rb_define_module str = withCString str c_rb_define_module
+
+rb_load_protect :: String -> Int -> IO Int
+rb_load_protect rv a = do
+    bptr <- new 0
+    rvs <- rb_str_new2 rv
+    c_rb_load_protect rvs a bptr
+    status <- peek bptr
+    free bptr
+    return status
+
+rb_funcall :: RValue -> RID -> [RValue] -> IO RValue
+rb_funcall a b []          = c_rb_funcall_0 a b 0
+rb_funcall a b [d]         = c_rb_funcall_1 a b 1 d
+rb_funcall a b [d,e]       = c_rb_funcall_2 a b 2 d e
+rb_funcall a b [d,e,f]     = c_rb_funcall_3 a b 3 d e f
+rb_funcall a b [d,e,f,g]   = c_rb_funcall_4 a b 4 d e f g
+rb_funcall a b [d,e,f,g,h] = c_rb_funcall_5 a b 5 d e f g h
+rb_funcall _ _ _           = error "Can't call functions with that many arguments"
+
+rbMethodCall :: String -> String -> [RValue] -> IO RValue
+rbMethodCall classname methodname args = do
+    c <- getClass classname
+    m <- rb_intern methodname
+    rb_funcall c m args
+
+getClass :: String -> IO RValue
+getClass s = do
+    i <- rb_intern s
+    o <- peek rb_cObject
+    rb_const_get o i
+
+rb_gv_get :: String -> IO RValue
+rb_gv_get s = withCString s c_rb_gv_get
+
+rb_intern :: String -> IO RID
+rb_intern s = withCString s c_rb_intern
+
+rb_string_value_ptr :: RValue -> IO String
+rb_string_value_ptr rv = do
+    rvp <- new rv
+    o <- c_rb_string_value_ptr rvp >>= peekCString
+    free rvp
+    return o
+
 
