@@ -1,3 +1,6 @@
+-- | This is the main module of this library. Other functionnalities are
+-- exposed in "Foreign.Ruby.Bindings" and "Foreign.Ruby.Helpers", but this
+-- should be enough for most cases.
 module Foreign.Ruby
     ( -- * Initialization / cleanup
       initialize
@@ -25,6 +28,11 @@ module Foreign.Ruby
     , mkRegistered2
     , rb_define_global_function
     -- * GC control
+    -- | This is a critical part of embedding the Ruby interpreter. Data
+    -- created using the `toRuby` function might be collected at any time.
+    -- For now, the solution is to disable the GC mechanism during calls to
+    -- Ruby functions. If someone knows of a better solution, please
+    -- contact the author of this library.
     , setGC
     , startGC
     , freezeGC

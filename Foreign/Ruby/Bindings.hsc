@@ -207,9 +207,9 @@ rb_string_value_cstr v = do
     free pv
     return o
 
--- | Defines a global function that can be called from the Ruby world.
+-- | Defines a global function that can be called from the Ruby world. This function must only accept `RValue`s as arguments.
 rb_define_global_function :: String -- ^ Name of the function
-                          -> FunPtr a -- ^ Pointer to the function (created with something like `makeRegistered0`, it can only take RValue)
+                          -> FunPtr a -- ^ Pointer to the function (created with something like `mkRegistered0`)
                           -> Int -- ^ Number of arguments the function accepts.
                           -> IO ()
 rb_define_global_function s f i = withCString s (\cs -> c_rb_define_global_function cs f i)
@@ -226,7 +226,10 @@ rb_str_new2 str = withCString str c_rb_str_new2
 rb_define_module :: String -> IO ()
 rb_define_module str = withCString str c_rb_define_module
 
-rb_load_protect :: String -> Int -> IO Int
+-- | Loads a ruby script (and executes it).
+rb_load_protect :: String -- ^ Path to the script
+                -> Int -- ^ Just set this to 0, unless you know what you are doing
+                -> IO Int -- ^ Return code, equal to 0 if everything went right. `showErrorStack` can be used in case of errors.
 rb_load_protect rv a = do
     bptr <- new 0
     rvs <- rb_str_new2 rv

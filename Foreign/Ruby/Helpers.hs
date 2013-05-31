@@ -204,7 +204,11 @@ runscript filename = do
 defineGlobalClass :: String -> IO RValue
 defineGlobalClass s = peek rb_cObject >>= rb_define_class s
 
-safeMethodCall :: String -> String -> [RValue] -> IO (Either (String, RValue) RValue)
+-- | Runs a Ruby method, capturing errors.
+safeMethodCall :: String -- ^ Class name.
+               -> String -- ^ Method name.
+               -> [RValue] -- ^ Arguments. Please note that the maximum number of arguments is 16.
+               -> IO (Either (String, RValue) RValue) -- ^ Returns either an error message / value couple, or the value returned by the function.
 safeMethodCall classname methodname args =
     if length args > 16
         then return (Left ("too many arguments", rbNil))
@@ -221,6 +225,8 @@ safeMethodCall classname methodname args =
                     err <- showErrorStack
                     return (Left (err,o))
 
+-- | Gives a (multiline) error friendly string representation of the last
+-- error.
 showErrorStack :: IO String
 showErrorStack = do
     runtimeerror <- rb_gv_get "$!"
@@ -235,16 +241,22 @@ showErrorStack = do
               else fmap (fromMaybe []) (fromRuby rbt)
     return (T.unpack (T.unlines (m : bt)))
 
-setGC :: Bool -> IO (Either (String, RValue) RValue)
+-- | Sets the current GC operation. Please note that this could be modified
+-- from Ruby scripts.
+setGC :: Bool -- ^ Set to `True` to enable GC, and to `False` to disable it.
+      -> IO (Either (String, RValue) RValue)
 setGC nw = do
     let method = if nw
                      then "enable"
                      else "disable"
     safeMethodCall "GC" method []
 
+-- | Runs the Ruby garbage collector.
 startGC :: IO ()
 startGC = Control.Monad.void (safeMethodCall "GC" "start" [])
 
+-- | Runs a computation with the Ruby GC disabled. Once the computation is over, GC
+-- will be re-enabled and the `startGC` function run.
 freezeGC :: IO a -> IO a
 freezeGC computation = do
     Control.Monad.void (setGC False)
