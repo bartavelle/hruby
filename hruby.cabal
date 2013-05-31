@@ -15,8 +15,13 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 Flag Ruby19
-    Description: Enable when you use Ruby 1.9 (not tested yet). It will default to Ruby 1.8.
+    Description: Enable when you use Ruby 1.9 (not implemented yet). It will default to Ruby 1.8.
     Default: False
+
+source-repository head
+  type: git
+  location: git://github.com/bartavelle/hruby.git
+
 
 library
   exposed-modules:      Foreign.Ruby, Foreign.Ruby.Bindings, Foreign.Ruby.Helpers
