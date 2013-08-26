@@ -51,6 +51,7 @@ roundTrip = monadicIO $ do
             out <- run (fromRuby x)
             void (run (setGC True))
             run startGC
+            when (out /= Just v) (run (print out))
             assert (Just v == out)
         Left (rr,_) -> run (print rr) >> assert False
 
@@ -59,7 +60,7 @@ main = do
     ruby_init
     ruby_init_loadpath
     rb_define_module "test"
-    st <- rb_load_protect "test/test.rb" 0
+    st <- rb_load_protect "./test/test.rb" 0
     unless (st == 0) (showErrorStack >>= error)
     quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTrip
     ruby_finalize

@@ -1,4 +1,4 @@
-{-# LANGUAGE ForeignFunctionInterface, FlexibleInstances #-}
+{-# LANGUAGE ForeignFunctionInterface, FlexibleInstances, CPP #-}
 
 #include "shim.h"
 
@@ -29,61 +29,6 @@ instance Storable ShimDispatch where
         let arrayblock = (#ptr struct s_dispatch, args) ptr
         pokeArray arrayblock vals
 
-builtinToInt :: RBuiltin -> CULong
-builtinToInt RNONE   = 0x00
-builtinToInt RNIL    = 0x01
-builtinToInt ROBJECT = 0x02
-builtinToInt RCLASS  = 0x03
-builtinToInt RICLASS = 0x04
-builtinToInt RMODULE = 0x05
-builtinToInt RFLOAT  = 0x06
-builtinToInt RSTRING = 0x07
-builtinToInt RREGEXP = 0x08
-builtinToInt RARRAY  = 0x09
-builtinToInt RFIXNUM = 0x0a
-builtinToInt RHASH   = 0x0b
-builtinToInt RSTRUCT = 0x0c
-builtinToInt RBIGNUM = 0x0d
-builtinToInt RFILE   = 0x0e
-builtinToInt RTRUE   = 0x20
-builtinToInt RFALSE  = 0x21
-builtinToInt RDATA   = 0x22
-builtinToInt RMATCH  = 0x23
-builtinToInt RSYMBOL = 0x24
-builtinToInt RBLKTAG = 0x3b
-builtinToInt RUNDEF  = 0x3c
-builtinToInt RVARMAP = 0x3d
-builtinToInt RSCOPE  = 0x3e
-builtinToInt RNODE   = 0x3f
-
-intToBuiltin :: CULong -> RBuiltin
--- intToBuiltin 0x00 = RNONE
-intToBuiltin 0x01 = RNIL
-intToBuiltin 0x02 = ROBJECT
-intToBuiltin 0x03 = RCLASS
-intToBuiltin 0x04 = RICLASS
-intToBuiltin 0x05 = RMODULE
-intToBuiltin 0x06 = RFLOAT
-intToBuiltin 0x07 = RSTRING
-intToBuiltin 0x08 = RREGEXP
-intToBuiltin 0x09 = RARRAY
-intToBuiltin 0x0a = RFIXNUM
-intToBuiltin 0x0b = RHASH
-intToBuiltin 0x0c = RSTRUCT
-intToBuiltin 0x0d = RBIGNUM
-intToBuiltin 0x0e = RFILE
-intToBuiltin 0x20 = RTRUE
-intToBuiltin 0x21 = RFALSE
-intToBuiltin 0x22 = RDATA
-intToBuiltin 0x23 = RMATCH
-intToBuiltin 0x24 = RSYMBOL
-intToBuiltin 0x3b = RBLKTAG
-intToBuiltin 0x3c = RUNDEF
-intToBuiltin 0x3d = RVARMAP
-intToBuiltin 0x3e = RSCOPE
-intToBuiltin 0x3f = RNODE
-intToBuiltin _ = RNONE
-
 -- | The ruby built-in types
 data RBuiltin = RNONE
               | RNIL
@@ -105,11 +50,17 @@ data RBuiltin = RNONE
               | RDATA
               | RMATCH
               | RSYMBOL
-              | RBLKTAG
               | RUNDEF
+              | RNODE
+#ifdef RUBY2
+              | RCOMPLEX
+              | RRATIONAL
+              | RZOMBIE
+#else
+              | RBLKTAG
               | RVARMAP
               | RSCOPE
-              | RNODE
+#endif
               deriving (Show)
 
 -- | Ruby native types, as encoded in the Value type.
@@ -118,6 +69,7 @@ data RType = RFixNum
            | RFalse
            | RTrue
            | RSymbol
+           | RUndef
            | RBuiltin RBuiltin
            deriving (Show)
 
@@ -151,7 +103,11 @@ foreign import ccall "rb_intern"                 c_rb_intern                 :: 
 foreign import ccall "rb_id2name"                rb_id2name                  :: RID -> IO CString
 foreign import ccall "rb_string_value_ptr"       c_rb_string_value_ptr       :: Ptr RValue -> IO CString
 foreign import ccall "&rb_cObject"               rb_cObject                  :: Ptr RValue
+#ifdef RUBY2
+foreign import ccall "rb_errinfo"                rb_errinfo                  :: IO RValue
+#else
 foreign import ccall "&ruby_errinfo"             ruby_errinfo                :: Ptr RValue
+#endif
 foreign import ccall "rb_define_class"           c_rb_define_class           :: CString -> RValue -> IO RValue
 foreign import ccall "rb_define_method"          c_rb_define_method          :: RValue -> CString -> FunPtr a -> Int -> IO ()
 foreign import ccall "rb_define_global_function" c_rb_define_global_function :: CString -> FunPtr a -> Int -> IO ()
@@ -167,10 +123,16 @@ foreign import ccall "rb_ary_entry"              rb_ary_entry                :: 
 foreign import ccall "rb_hash_foreach"           rb_hash_foreach             :: RValue -> FunPtr a -> RValue -> IO ()
 foreign import ccall "rb_big2str"                rb_big2str                  :: RValue -> CInt -> IO RValue
 foreign import ccall "rb_cstr_to_inum"           rb_cstr_to_inum             :: CString -> CInt -> CInt -> IO RValue
-foreign import ccall "rb_float_new"              rb_float_new                :: Double -> IO RValue
+foreign import ccall "newFloat"                  newFloat                    :: Double -> IO RValue
 foreign import ccall "rb_hash_new"               rb_hash_new                 :: IO RValue
 foreign import ccall "rb_hash_aset"              rb_hash_aset                :: RValue -> RValue -> RValue -> IO RValue
 foreign import ccall "rb_define_module"          c_rb_define_module          :: CString -> IO ()
+
+foreign import ccall "arrayLength"               arrayLength                 :: RValue -> IO CLong
+foreign import ccall "rubyType"                  rubyType                    :: RValue -> IO CInt
+foreign import ccall "num2dbl"                   num2dbl                     :: RValue -> IO Double
+foreign import ccall "int2num"                   int2num                     :: CLong  -> IO RValue
+foreign import ccall "num2long"                  num2long                    :: RValue -> IO CLong
 
 sym2id :: RValue -> RID
 sym2id x = (fromIntegral (ptrToIntPtr x)) `shiftR` 8
@@ -178,27 +140,75 @@ sym2id x = (fromIntegral (ptrToIntPtr x)) `shiftR` 8
 id2sym :: RID -> RValue
 id2sym x = intPtrToPtr (fromIntegral ( (x `shiftL` 8) .|. 0x0e ))
 
-rbFalse :: RValue
+rbFalse,rbTrue,rbNil,rbUndef :: RValue
+#ifdef RUBY2
+rbFalse = intPtrToPtr 0x00
+rbTrue  = intPtrToPtr 0x14
+rbNil   = intPtrToPtr 0x08
+rbUndef = intPtrToPtr 0x34
+#else
 rbFalse = intPtrToPtr 0
-rbTrue :: RValue
-rbTrue = intPtrToPtr 2
-rbNil :: RValue
-rbNil = intPtrToPtr 4
+rbTrue  = intPtrToPtr 2
+rbNil   = intPtrToPtr 4
+rbUndef = intPtrToPtr 6
+#endif
 
 rtype :: RValue -> IO RType
-rtype rv | ptrToIntPtr rv .&. 1 == 1 = return RFixNum
-         | ptrToIntPtr rv  == 0 = return RFalse
-         | ptrToIntPtr rv  == 2 = return RTrue
-         | ptrToIntPtr rv  == 4 = return RNil
-         | ptrToIntPtr rv .&. 0xff == 0x0e = return RSymbol
-         | otherwise = fmap (RBuiltin . intToBuiltin . (.&. 0x3f)) (peek rv)
-
-
-peekArrayLength :: RValue -> IO CLong
-peekArrayLength = (#peek struct RArray, len)
-
-peekRFloatValue :: RValue -> IO Double
-peekRFloatValue = (#peek struct RFloat, value)
+rtype v = rubyType v >>= \x -> case x of
+#ifdef RUBY2
+    0x00 -> return RUndef
+    0x01 -> return (RBuiltin ROBJECT)
+    0x02 -> return (RBuiltin RCLASS)
+    0x03 -> return (RBuiltin RMODULE)
+    0x04 -> return (RBuiltin RFLOAT)
+    0x05 -> return (RBuiltin RSTRING)
+    0x06 -> return (RBuiltin RREGEXP)
+    0x07 -> return (RBuiltin RARRAY)
+    0x08 -> return (RBuiltin RHASH)
+    0x09 -> return (RBuiltin RSTRUCT)
+    0x0a -> return (RBuiltin RBIGNUM)
+    0x0b -> return (RBuiltin RFILE)
+    0x0c -> return (RBuiltin RDATA)
+    0x0d -> return (RBuiltin RMATCH)
+    0x0e -> return (RBuiltin RCOMPLEX)
+    0x0f -> return (RBuiltin RRATIONAL)
+    0x11 -> return RNil
+    0x12 -> return RTrue
+    0x13 -> return RFalse
+    0x14 -> return RSymbol
+    0x15 -> return RFixNum
+    0x1b -> return (RBuiltin RUNDEF)
+    0x1c -> return (RBuiltin RNODE)
+    0x1d -> return (RBuiltin RICLASS)
+    0x1e -> return (RBuiltin RZOMBIE)
+#else
+    0x00 -> return RUndef
+    0x01 -> return RNil
+    0x02 -> return (RBuiltin ROBJECT)
+    0x03 -> return (RBuiltin RCLASS)
+    0x04 -> return (RBuiltin RICLASS)
+    0x05 -> return (RBuiltin RMODULE)
+    0x06 -> return (RBuiltin RFLOAT)
+    0x07 -> return (RBuiltin RSTRING)
+    0x08 -> return (RBuiltin RREGEXP)
+    0x09 -> return (RBuiltin RARRAY)
+    0x0a -> return RFixNum
+    0x0b -> return (RBuiltin RHASH)
+    0x0c -> return (RBuiltin RSTRUCT)
+    0x0d -> return (RBuiltin RBIGNUM)
+    0x0e -> return (RBuiltin RFILE)
+    0x20 -> return RTrue
+    0x21 -> return RFalse
+    0x22 -> return (RBuiltin RDATA)
+    0x23 -> return (RBuiltin RMATCH)
+    0x24 -> return RSymbol
+    0x3b -> return (RBuiltin RBLKTAG)
+    0x3c -> return RUndef
+    0x3d -> return (RBuiltin RVARMAP)
+    0x3e -> return (RBuiltin RSCOPE)
+    0x3f -> return (RBuiltin RNODE)
+#endif
+    _ -> return RUndef
 
 rb_string_value_cstr :: RValue -> IO String
 rb_string_value_cstr v = do

@@ -14,6 +14,10 @@ category:            Language
 build-type:          Simple
 cabal-version:       >=1.8
 
+Flag Ruby20
+    Description: Enable when you use Ruby 2.0. It will default to Ruby 1.8.
+    Default: False
+
 Flag Ruby19
     Description: Enable when you use Ruby 1.9 (not implemented yet). It will default to Ruby 1.8.
     Default: False
@@ -28,16 +32,20 @@ library
   ghc-options:          -Wall
   extensions:           BangPatterns, OverloadedStrings
   build-depends:        base ==4.6.*, aeson, bytestring, attoparsec, vector, text, unordered-containers
-  if flag(ruby19)
-      extra-libraries:      ruby1.9
-      c-sources:            cbits1.9/shim.c
-      install-includes:     cbits1.9/shim.h
-      include-dirs:         cbits1.9
+  c-sources:            cbits/shim.c
+  install-includes:     cbits/shim.h
+  include-dirs:         cbits
+  if flag(ruby20)
+      extra-libraries:      ruby
+      cc-options:           -DRUBY2
+      include-dirs:         /usr/include/ruby-2.0.0, /usr/include/ruby-2.0.0/x86_64-linux
   else
-      extra-libraries:      ruby1.8
-      c-sources:            cbits1.8/shim.c
-      install-includes:     cbits1.8/shim.h
-      include-dirs:         cbits1.8
+      if flag(ruby19)
+          extra-libraries:      ruby1.9
+          include-dirs:         /usr/lib/ruby/1.9/x86_64-linux
+      else
+          extra-libraries:      ruby1.8
+          include-dirs:         /usr/lib/ruby/1.8/x86_64-linux
 
 Test-Suite test-roundtrip
   hs-source-dirs: test

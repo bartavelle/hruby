@@ -28,17 +28,13 @@ class ToRuby a where
     toRuby   :: a -> IO RValue
 
 fromRubyIntegral :: Integral n => RValue -> IO (Maybe n)
-fromRubyIntegral r = do
-    t <- rtype r
-    case t of
-        RFixNum -> return (Just (fromIntegral (ptrToIntPtr r `shiftR` 1)))
-        _ -> return Nothing
+fromRubyIntegral = fmap (Just . fromIntegral) . num2long
 toRubyIntegral :: Integral n => n -> IO RValue
-toRubyIntegral n = return (intPtrToPtr ( (fromIntegral n `shiftL` 1) .|. 1))
+toRubyIntegral = int2num . fromIntegral
 
 fromRubyArray :: FromRuby a => RValue -> IO (Maybe [a])
 fromRubyArray v = do
-    nbelems <- peekArrayLength v
+    nbelems <- arrayLength v
     fmap sequence (forM [0..(nbelems-1)] (rb_ary_entry v >=> fromRuby))
 
 instance FromRuby a => FromRuby [a] where
@@ -73,9 +69,9 @@ instance ToRuby T.Text where
     toRuby = toRuby . T.encodeUtf8
 
 instance ToRuby Double where
-    toRuby = rb_float_new
+    toRuby = newFloat
 instance FromRuby Double where
-    fromRuby = fmap Just . peekRFloatValue
+    fromRuby = fmap Just . num2dbl
 
 instance FromRuby Integer where
     fromRuby = fromRubyIntegral
@@ -132,11 +128,7 @@ instance FromRuby Value where
                 return Nothing
 
 instance ToRuby Value where
-    toRuby (Number (I x)) = do
-        let maxRubyInt = fromIntegral (maxBound :: IntPtr) `shiftR` 1 :: Integer
-        if x >= maxRubyInt
-            then BS.useAsCString (BS.pack (show x)) (\cs -> rb_cstr_to_inum cs 10 0)
-            else toRubyIntegral x
+    toRuby (Number (I x)) = toRuby x
     toRuby (Number (D x)) = toRuby x
     toRuby (String t) = let bs = T.encodeUtf8 t
                         in  BS.useAsCString bs c_rb_str_new2
