@@ -108,6 +108,7 @@ foreign import ccall "rb_errinfo"                rb_errinfo                  :: 
 #else
 foreign import ccall "&ruby_errinfo"             ruby_errinfo                :: Ptr RValue
 #endif
+foreign import ccall "rb_iv_set"                 c_rb_iv_set                 :: RValue -> CString -> RValue -> IO RValue
 foreign import ccall "rb_define_class"           c_rb_define_class           :: CString -> RValue -> IO RValue
 foreign import ccall "rb_define_method"          c_rb_define_method          :: RValue -> CString -> FunPtr a -> Int -> IO ()
 foreign import ccall "rb_define_global_function" c_rb_define_global_function :: CString -> FunPtr a -> Int -> IO ()
