@@ -237,6 +237,13 @@ rb_str_new2 str = withCString str c_rb_str_new2
 rb_define_module :: String -> IO ()
 rb_define_module str = withCString str c_rb_define_module
 
+-- | Sets an instance variable
+rb_iv_set :: RValue -- ^ The object
+          -> String -- ^ The variable name (without the @)
+          -> RValue -- ^ The value to set
+          -> IO RValue -- ^ The value you just set
+rb_iv_set obj varname varvalue = withCString ('@' : varname) $ \cvarname -> c_rb_iv_set obj cvarname varvalue
+
 -- | Loads a ruby script (and executes it).
 rb_load_protect :: String -- ^ Path to the script
                 -> Int -- ^ Just set this to 0, unless you know what you are doing

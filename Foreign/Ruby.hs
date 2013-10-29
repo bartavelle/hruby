@@ -41,6 +41,8 @@ module Foreign.Ruby
     , safeMethodCall
     -- * Error handling
     , showErrorStack
+    -- * Various
+    , rb_iv_set
     )
 where
 
