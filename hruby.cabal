@@ -2,7 +2,7 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                hruby
-version:             0.1.1
+version:             0.1.2
 synopsis:            Embed Ruby in your Haskell program.
 description:         Warning: this is completely experimental. Everything you need should be in "Foreign.Ruby".
 license:             BSD3
@@ -31,7 +31,13 @@ library
   exposed-modules:      Foreign.Ruby, Foreign.Ruby.Bindings, Foreign.Ruby.Helpers
   ghc-options:          -Wall
   extensions:           BangPatterns, OverloadedStrings
-  build-depends:        base ==4.6.*, aeson, bytestring, attoparsec, vector, text, unordered-containers
+  build-depends:        base ==4.6.*
+                        , aeson                >= 0.6.2.0 && < 0.7
+                        , bytestring
+                        , attoparsec           >= 0.10 && < 0.11
+                        , vector               >= 0.10 && < 0.11
+                        , text                 >= 0.11 && < 0.12
+                        , unordered-containers >= 0.2 && < 0.3
   c-sources:            cbits/shim.c
   install-includes:     cbits/shim.h
   include-dirs:         cbits
