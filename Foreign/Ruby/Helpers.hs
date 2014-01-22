@@ -1,18 +1,17 @@
 module Foreign.Ruby.Helpers where
 
-import Foreign.Ruby.Bindings
-
-import Data.Maybe (fromMaybe)
-import Foreign
-import Data.Aeson
 import Control.Monad
+import Data.Aeson(Value(..))
+import Data.Attoparsec.Number
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.HashMap.Strict as HM
+import Data.IORef
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import qualified Data.ByteString.Char8 as BS
-import Data.Attoparsec.Number
 import qualified Data.Vector as V
-import Data.IORef
-import qualified Data.HashMap.Strict as HM
+import Foreign
+import Foreign.Ruby.Bindings
 
 -- | The class of things that can be converted from Ruby values. Note that
 -- there are a ton of stuff that are Ruby values, hence the `Maybe` type,
