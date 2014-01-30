@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Foreign.Ruby.Helpers where
 
 import Foreign.Ruby.Bindings
@@ -9,10 +10,10 @@ import Control.Monad
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.ByteString.Char8 as BS
-import Data.Attoparsec.Number
 import qualified Data.Vector as V
 import Data.IORef
 import qualified Data.HashMap.Strict as HM
+import Data.Scientific
 
 -- | The class of things that can be converted from Ruby values. Note that
 -- there are a ton of stuff that are Ruby values, hence the `Maybe` type,
@@ -90,7 +91,7 @@ instance FromRuby Value where
     fromRuby v = do
         t <- rtype v
         case t of
-            RFixNum          -> fmap (fmap (Number . I)) (fromRuby v)
+            RFixNum          -> fmap (fmap (Number . (fromIntegral :: Integer -> Scientific))) (fromRuby v)
             RNil             -> return (Just Null)
             RFalse           -> return (Just (Bool False))
             RTrue            -> return (Just (Bool True))
@@ -101,11 +102,11 @@ instance FromRuby Value where
             RBuiltin RTRUE   -> return (Just (Bool True))
             RBuiltin RFALSE  -> return (Just (Bool False))
             RBuiltin RUNDEF  -> return (Just Null)
-            RBuiltin RFLOAT  -> fmap (fmap (Number . D)) (fromRuby v)
+            RBuiltin RFLOAT  -> fmap (fmap (Number . fromRational . (toRational :: Double -> Rational))) (fromRuby v)
             RBuiltin RBIGNUM -> do
                 bs <- rb_big2str v 10 >>= fromRuby
                 case fmap BS.readInteger bs of
-                    Just (Just (x,"")) -> return (Just (Number (I x)))
+                    Just (Just (x,"")) -> return (Just (Number (fromIntegral x)))
                     _ -> return Nothing
             RBuiltin RNONE -> return (Just Null)
             RBuiltin RHASH   -> do
@@ -127,9 +128,12 @@ instance FromRuby Value where
                 putStrLn ("Could not decode: " ++ show t)
                 return Nothing
 
+instance ToRuby Scientific where
+    toRuby s | base10Exponent s == 0 = toRuby (coefficient s)
+             | otherwise = toRuby (fromRational (toRational s) :: Double)
+
 instance ToRuby Value where
-    toRuby (Number (I x)) = toRuby x
-    toRuby (Number (D x)) = toRuby x
+    toRuby (Number x) = toRuby x
     toRuby (String t) = let bs = T.encodeUtf8 t
                         in  BS.useAsCString bs c_rb_str_new2
     toRuby Null = return rbNil
