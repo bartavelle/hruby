@@ -90,7 +90,15 @@ foreign import ccall "wrapper" mkRegisteredCB3 :: RegisteredCB3 -> IO (FunPtr Re
 foreign import ccall "ruby_init"                 ruby_init                   :: IO ()
 foreign import ccall "ruby_finalize"             ruby_finalize               :: IO ()
 foreign import ccall "ruby_init_loadpath"        ruby_init_loadpath          :: IO ()
+#ifdef RUBY21
+foreign import ccall "rb_str_new_cstr"           c_rb_str_new2               :: CString -> IO RValue
+foreign import ccall "rb_ary_new_capa"           rb_ary_new2                 :: CLong -> IO RValue
+foreign import ccall "rb_ary_new_from_values"    rb_ary_new4                 :: CLong -> Ptr RValue -> IO RValue
+#else
 foreign import ccall "rb_str_new2"               c_rb_str_new2               :: CString -> IO RValue
+foreign import ccall "rb_ary_new2"               rb_ary_new2                 :: CLong -> IO RValue
+foreign import ccall "rb_ary_new4"               rb_ary_new4                 :: CLong -> Ptr RValue -> IO RValue
+#endif
 foreign import ccall "rb_load_protect"           c_rb_load_protect           :: RValue -> Int -> Ptr Int -> IO ()
 foreign import ccall "rb_funcall"                c_rb_funcall_0              :: RValue -> RID -> Int -> IO RValue
 foreign import ccall "rb_funcall"                c_rb_funcall_1              :: RValue -> RID -> Int -> RValue -> IO RValue
@@ -117,8 +125,6 @@ foreign import ccall "&safeCall"                 safeCallback                :: 
 foreign import ccall "rb_protect"                c_rb_protect                :: FunPtr (RValue -> IO RValue) -> RValue -> Ptr Int -> IO RValue
 foreign import ccall "rb_string_value_cstr"      c_rb_string_value_cstr      :: Ptr RValue -> IO CString
 foreign import ccall "rb_ary_new"                rb_ary_new                  :: IO RValue
-foreign import ccall "rb_ary_new2"               rb_ary_new2                 :: CLong -> IO RValue
-foreign import ccall "rb_ary_new4"               rb_ary_new4                 :: CLong -> Ptr RValue -> IO RValue
 foreign import ccall "rb_ary_push"               rb_ary_push                 :: RValue -> RValue -> IO RValue
 foreign import ccall "rb_ary_entry"              rb_ary_entry                :: RValue -> CLong -> IO RValue
 foreign import ccall "rb_hash_foreach"           rb_hash_foreach             :: RValue -> FunPtr a -> RValue -> IO ()

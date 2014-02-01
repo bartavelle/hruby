@@ -29,7 +29,7 @@ b :: Gen Value
 b = fmap Bool arbitrary
 
 n :: Gen Value
-n = fmap Number arbitrary
+n = fmap (Number . fromIntegral) (arbitrary :: Gen Integer)
 
 h :: Gen Value
 h = fmap object $ do

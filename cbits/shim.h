@@ -1,4 +1,7 @@
 #include <ruby.h>
+#ifdef RUBY21
+#include <ruby/intern.h>
+#endif
 
 struct s_dispatch {
 	char * classname;
