@@ -129,7 +129,7 @@ instance FromRuby Value where
                 return Nothing
 
 instance ToRuby Scientific where
-    toRuby s | base10Exponent s == 0 = toRuby (coefficient s)
+    toRuby s | base10Exponent s >= 0 = toRuby (coefficient s)
              | otherwise = toRuby (fromRational (toRational s) :: Double)
 
 instance ToRuby Value where
