@@ -2,7 +2,7 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                hruby
-version:             0.2.1
+version:             0.2.2
 synopsis:            Embed Ruby in your Haskell program.
 description:         Warning: this is completely experimental. Everything you need should be in "Foreign.Ruby".
 license:             BSD3
@@ -11,20 +11,8 @@ author:              Simon Marechal
 maintainer:          bartavelle@gmail.com
 -- copyright:           
 category:            Language
-build-type:          Simple
+build-type:          Custom
 cabal-version:       >=1.8
-
-Flag Ruby21
-    Description: Enable when you use Ruby 2.1. It will default to Ruby 1.8.
-    Default: False
-
-Flag Ruby20
-    Description: Enable when you use Ruby 2.0. It will default to Ruby 1.8.
-    Default: False
-
-Flag Ruby19
-    Description: Enable when you use Ruby 1.9 (not implemented yet). It will default to Ruby 1.8.
-    Default: False
 
 source-repository head
   type: git
@@ -47,22 +35,6 @@ library
   c-sources:            cbits/shim.c
   install-includes:     cbits/shim.h
   include-dirs:         cbits
-  if flag(ruby20)
-      extra-libraries:      ruby
-      cc-options:           -DRUBY2
-      include-dirs:         /usr/include/ruby-2.0.0, /usr/include/ruby-2.0.0/x86_64-linux, /usr/include/x86_64-linux-gnu/ruby-2.0.0
-  else
-      if flag(ruby19)
-          extra-libraries:      ruby1.9
-          include-dirs:         /usr/lib/ruby/1.9/x86_64-linux
-      else
-        if flag(ruby21)
-            extra-libraries:      ruby-2.1
-            cc-options:           -DRUBY2 -DRUBY21
-            include-dirs:         /usr/include/ruby-2.1.0, /usr/include/x86_64-linux-gnu/ruby-2.1.0, /usr/include/ruby-2.1.0/x86_64-linux
-        else
-            extra-libraries:      ruby1.8
-            include-dirs:         /usr/lib/ruby/1.8/x86_64-linux
 
 Test-Suite test-roundtrip
   hs-source-dirs: test
