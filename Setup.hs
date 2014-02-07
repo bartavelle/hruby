@@ -26,9 +26,9 @@ validflags = ["ruby18", "ruby19", "ruby20", "ruby21"]
 
 can'tFindRuby :: String
 can'tFindRuby = unlines $ [ "Could not find the ruby library. Ensure that it is present on your system (on Debian/Ubuntu, make sure you installed the ruby1.8-dev package)."
-                          , "If you know it to be installed, please install hruby in the following way:"
+                          , "If you know it to be installed, please install hruby in the following way (example for nix):"
                           , ""
-                          , "$ cabal install hruby -p --configure-option='--rubylib=ruby --rubyinc=/usr/include/ruby-2.1.0/x86_64-linux --rubyversion=21'"
+                          , "$ cabal install hruby -p --configure-option=\"--rubyversion=19 --rubylib=ruby --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1 --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1/x86_64-linux' --extra-lib-dirs=$HOME/.nix-profile/lib/\""
                           , ""
                           , " --rubylib : Should be the name of the library passed to the linker (ruby for libruby.so)."
                           , " --rubyinc : There can be several instances of this flag. Should be the path of the various ruby header files."
@@ -90,13 +90,10 @@ parseFlags flags h = return $ setBuildInfo h $ foldl' parseFlags' bbi flags
         bbi = getBuildInfo h
         parseFlags' bi fl = case (stripPrefix "--rubylib=" fl, stripPrefix "--rubyinc=" fl, stripPrefix "--rubyversion=" fl) of
                                 (Just l, _, _)    -> bi { extraLibs   = l : extraLibs bi }
-                                (_, Just l, _)    -> bi { includeDirs = l : extraLibs bi }
+                                (_, Just l, _)    -> bi { includeDirs = l : includeDirs bi }
                                 (_, _, Just "20") -> bi { ccOptions   = "-DRUBY2" : ccOptions bi }
                                 (_, _, Just "21") -> bi { ccOptions   = "-DRUBY2" : "-DRUBY21" : ccOptions bi }
                                 _                 -> bi
-            where
-                rubylib = stripPrefix "--rubylib=" fl
-                rubyinc = stripPrefix "--rubyinc=" fl
 
 main :: IO ()
 main = do
