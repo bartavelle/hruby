@@ -111,11 +111,6 @@ foreign import ccall "rb_intern"                 c_rb_intern                 :: 
 foreign import ccall "rb_id2name"                rb_id2name                  :: RID -> IO CString
 foreign import ccall "rb_string_value_ptr"       c_rb_string_value_ptr       :: Ptr RValue -> IO CString
 foreign import ccall "&rb_cObject"               rb_cObject                  :: Ptr RValue
-#ifdef RUBY2
-foreign import ccall "rb_errinfo"                rb_errinfo                  :: IO RValue
-#else
-foreign import ccall "&ruby_errinfo"             ruby_errinfo                :: Ptr RValue
-#endif
 foreign import ccall "rb_iv_set"                 c_rb_iv_set                 :: RValue -> CString -> RValue -> IO RValue
 foreign import ccall "rb_define_class"           c_rb_define_class           :: CString -> RValue -> IO RValue
 foreign import ccall "rb_define_method"          c_rb_define_method          :: RValue -> CString -> FunPtr a -> Int -> IO ()
