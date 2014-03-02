@@ -20,7 +20,6 @@ data RubyInfo = RubyInfo { rbVersion     :: RubyVersion
                          , rbInstallName :: String
                          , rbIncludes    :: [String]
                          , rbLib         :: String
-                         , rbSoName      :: String
                          , rbLibName     :: String
                          } deriving (Eq, Show, Read)
 
@@ -39,13 +38,11 @@ getRubyInfo = do
     headerDir   <- evalRuby "print RbConfig::CONFIG['rubyhdrdir']"
     archDir     <- evalRuby "print RbConfig::CONFIG['rubyhdrdir'] + File::Separator + RbConfig::CONFIG['arch']"
     libDir      <- evalRuby "print RbConfig::CONFIG['libdir']"
-    soName      <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO']"
-    libName     <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO'].sub(/^lib/,'').sub(/\\.(so|dll|dylib)$/,'')"
+    libName     <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO'].sub(/^lib/,'').sub(/\\.(so|dll|dylib)([.0-9]+)?$/,'')"
     return $ RubyInfo <$> version
                       <*> installName
                       <*> sequence [headerDir, archDir]
                       <*> libDir
-                      <*> soName
                       <*> libName
 
 defsFor :: RubyInfo -> [String]
