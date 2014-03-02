@@ -4,9 +4,67 @@ import Distribution.Simple.Configure
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Utils
 import Distribution.PackageDescription
+
 import System.Environment
+import System.Process
+import System.Exit
+
+import Control.Applicative
+
 import Data.List (partition,stripPrefix,foldl')
 import Data.Maybe (mapMaybe)
+
+
+type RubyVersion = (Int, Int, Int)
+data RubyInfo = RubyInfo { rbVersion     :: RubyVersion
+                         , rbInstallName :: String
+                         , rbIncludes    :: [String]
+                         , rbLib         :: String
+                         , rbSoName      :: String
+                         , rbLibName     :: String
+                         } deriving (Eq, Show, Read)
+
+evalRuby :: String            -- expression to evaluate
+         -> IO (Maybe String) -- stdout, if successfull
+evalRuby exp = do
+    (exitCode, out, err) <- readProcessWithExitCode "ruby" ["-e", exp] ""
+    return $ if exitCode == ExitSuccess
+               then Just out
+               else Nothing
+
+getRubyInfo :: IO (Maybe RubyInfo)
+getRubyInfo = do
+    version     <- evalRuby "print '('+RUBY_VERSION.gsub('.', ',')+')'" >>= (return . fmap read)
+    installName <- evalRuby "print RbConfig::CONFIG['RUBY_INSTALL_NAME']"
+    headerDir   <- evalRuby "print RbConfig::CONFIG['rubyhdrdir']"
+    archDir     <- evalRuby "print RbConfig::CONFIG['rubyhdrdir'] + File::Separator + RbConfig::CONFIG['arch']"
+    libDir      <- evalRuby "print RbConfig::CONFIG['libdir']"
+    soName      <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO']"
+    libName     <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO'].sub(/^lib/,'').sub(/\\.(so|dll|dylib)$/,'')"
+    return $ RubyInfo <$> version
+                      <*> installName
+                      <*> sequence [headerDir, archDir]
+                      <*> libDir
+                      <*> soName
+                      <*> libName
+
+defsFor :: RubyInfo -> [String]
+defsFor info =
+    case rbVersion info of
+        (1, _, _) -> []
+        (2, 0, _) -> ["-DRUBY2"]
+        (2, _, _) -> ["-DRUBY2", "-DRUBY21"]
+
+can'tFindRuby :: String
+can'tFindRuby = unlines $ [ "Could not find the ruby library. Ensure that it is present on your system (on Debian/Ubuntu, make sure you installed the ruby1.8-dev package)."
+                          , "If you know it to be installed, please install hruby in the following way (example for nix):"
+                          , ""
+                          , "$ cabal install hruby -p --configure-option=\"--rubyversion=19 --rubylib=ruby --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1 --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1/x86_64-linux' --extra-lib-dirs=$HOME/.nix-profile/lib/\""
+                          , ""
+                          , " --rubylib : Should be the name of the library passed to the linker (ruby for libruby.so)."
+                          , " --rubyinc : There can be several instances of this flag. Should be the path of the various ruby header files."
+                          , " --rubyversion : Mandatory for ruby 2.0 and 2.1, should have the values 20 or 21."
+                          ]
 
 getBuildInfo :: LocalBuildInfo -> BuildInfo
 getBuildInfo l = case library (localPkgDescr l) of
@@ -21,68 +79,19 @@ setBuildInfo l b = l { localPkgDescr = lpd' }
         li' = li { libBuildInfo = b }
         lpd' = lpd { library = Just li' }
 
-validflags :: [String]
-validflags = ["ruby18", "ruby19", "ruby20", "ruby21"]
-
-can'tFindRuby :: String
-can'tFindRuby = unlines $ [ "Could not find the ruby library. Ensure that it is present on your system (on Debian/Ubuntu, make sure you installed the ruby1.8-dev package)."
-                          , "If you know it to be installed, please install hruby in the following way (example for nix):"
-                          , ""
-                          , "$ cabal install hruby -p --configure-option=\"--rubyversion=19 --rubylib=ruby --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1 --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1/x86_64-linux' --extra-lib-dirs=$HOME/.nix-profile/lib/\""
-                          , ""
-                          , " --rubylib : Should be the name of the library passed to the linker (ruby for libruby.so)."
-                          , " --rubyinc : There can be several instances of this flag. Should be the path of the various ruby header files."
-                          , " --rubyversion : Mandatory for ruby 2.0 and 2.1, should have the values 20 or 21."
-                          ]
-
-type InstallInfo = (String, [String], [String])
-
-inc18,inc19,inc20,inc21 :: [String]
-inc21 = ["/usr/include/ruby-2.1.0", "/usr/include/x86_64-linux-gnu/ruby-2.1.0", "/usr/include/ruby-2.1.0/x86_64-linux"]
-inc20 = ["/usr/include/ruby-2.0.0", "/usr/include/x86_64-linux-gnu/ruby-2.0.0", "/usr/include/ruby-2.0.0/x86_64-linux"]
-inc19 = ["/usr/lib/ruby/1.9/x86_64-linux"]
-inc18 = ["/usr/lib/ruby/1.8/x86_64-linux"]
-
-r18,r19,r20,r21 :: InstallInfo
-r21 = ("ruby2.1", inc21, ["-DRUBY2","-DRUBY21"])
-r20 = ("ruby2.0", inc20, ["-DRUBY2"])
-r19 = ("ruby1.9", inc19, [])
-r18 = ("ruby1.8", inc18, [])
-
-defaultLib :: InstallInfo -> InstallInfo
-defaultLib (_,i,c) = ("ruby",i,c)
-
 myConfHook :: LocalBuildInfo -> IO LocalBuildInfo
 myConfHook h = do
-    -- hunt for libraries
-    let rubies = ["ruby2.1", "ruby2.0", "ruby1.9", "ruby1.8", "ruby"]
-        pathes = ["/usr/lib", "/usr/local/lib"]
-    f <- findFirstFile (\(p,r) -> p ++ "/lib" ++ r ++ ".so") [(p,r) | p <- pathes, r <- rubies]
-    let rubystring = maybe "" snd f
-        lg s = notice normal ("Auto detected " ++ s)
-    case fmap snd f of
-        Just "ruby2.1" -> hookWith r21 h
-        Just "ruby2.0" -> hookWith r20 h
-        Just "ruby1.9" -> hookWith r19 h
-        Just "ruby1.8" -> hookWith r18 h
-        Just "ruby" -> do
-            is21 <- findFirstFile id inc21
-            is20 <- findFirstFile id inc20
-            is19 <- findFirstFile id inc19
-            is18 <- findFirstFile id inc18
-            case filter ((/= Nothing) . fst) [(is21,r21), (is20,r20), (is19,r19), (is18,r18)] of
-                ((_,(n,inc,flgs)):_) -> hookWith ("ruby",inc,flgs) h
-                _ -> warn normal can'tFindRuby >> return h
-        Just x -> die $ "Did find this (this should not happen): " ++ x
+    mrubyInfo <- getRubyInfo
+    case mrubyInfo of
+        Just (info) ->
+            let buildinfos = getBuildInfo h
+                bi = buildinfos { extraLibs    = rbLibName info : extraLibs buildinfos
+                                , extraLibDirs = rbLib info : extraLibDirs buildinfos
+                                , includeDirs  = includeDirs buildinfos ++ rbIncludes info
+                                , ccOptions    = ccOptions buildinfos ++ defsFor info
+                                }
+                in putStrLn ("Detected ruby: " ++ show info) >> return (setBuildInfo h bi)
         _ -> warn normal can'tFindRuby >> return h
-
-hookWith (e,i,c) h =
-    let buildinfos = getBuildInfo h
-        bi = buildinfos { extraLibs = e : extraLibs buildinfos
-                        , includeDirs = includeDirs buildinfos ++ i
-                        , ccOptions = ccOptions buildinfos ++ c
-                        }
-    in putStrLn ("Detected parameters: " ++ show (e,i,c)) >> return (setBuildInfo h bi)
 
 parseFlags :: [String] -> LocalBuildInfo -> IO LocalBuildInfo
 parseFlags flags h = return $ setBuildInfo h $ foldl' parseFlags' bbi flags
@@ -103,4 +112,3 @@ main = do
                    then myConfHook
                    else parseFlags (concatMap words flags)
     defaultMainWithHooks $ simpleUserHooks { confHook = (\a b -> configure a b >>= hook) }
-
