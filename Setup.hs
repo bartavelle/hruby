@@ -34,16 +34,24 @@ evalRuby exp = do
 getRubyInfo :: IO (Maybe RubyInfo)
 getRubyInfo = do
     version     <- evalRuby "print '('+RUBY_VERSION.gsub('.', ',')+')'" >>= (return . fmap read)
-    installName <- evalRuby "print RbConfig::CONFIG['RUBY_INSTALL_NAME']"
-    headerDir   <- evalRuby "print RbConfig::CONFIG['rubyhdrdir']"
-    archDir     <- evalRuby "print RbConfig::CONFIG['rubyhdrdir'] + File::Separator + RbConfig::CONFIG['arch']"
-    libDir      <- evalRuby "print RbConfig::CONFIG['libdir']"
-    libName     <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO'].sub(/^lib/,'').sub(/\\.(so|dll|dylib)([.0-9]+)?$/,'')"
-    return $ RubyInfo <$> version
-                      <*> installName
-                      <*> sequence [headerDir, archDir]
-                      <*> libDir
-                      <*> libName
+    case version of
+        Nothing -> return Nothing
+        Just v@(1,8,_) -> return $ Just $ RubyInfo v
+                                                   "/usr/lib/ruby/1.8"
+                                                   ["/usr/lib/ruby/1.8/x86_64-linux"]
+                                                   "/usr/lib"
+                                                   "ruby1.8"
+        Just v -> do
+            installName <- evalRuby "print RbConfig::CONFIG['RUBY_INSTALL_NAME']"
+            headerDir   <- evalRuby "print RbConfig::CONFIG['rubyhdrdir']"
+            archDir     <- evalRuby "print RbConfig::CONFIG['rubyhdrdir'] + File::Separator + RbConfig::CONFIG['arch']"
+            libDir      <- evalRuby "print RbConfig::CONFIG['libdir']"
+            libName     <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO'].sub(/^lib/,'').sub(/\\.(so|dll|dylib)([.0-9]+)?$/,'')"
+            return $ RubyInfo <$> pure v
+                              <*> installName
+                              <*> sequence [headerDir, archDir]
+                              <*> libDir
+                              <*> libName
 
 defsFor :: RubyInfo -> [String]
 defsFor info =
