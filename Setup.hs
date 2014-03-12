@@ -38,7 +38,7 @@ getRubyInfo = do
         Nothing -> return Nothing
         Just v@(1,8,_) -> return $ Just $ RubyInfo v
                                                    "/usr/lib/ruby/1.8"
-                                                   ["/usr/lib/ruby/1.8/x86_64-linux"]
+                                                   ["/usr/lib/ruby/1.8/x86_64-linux","/usr/lib64/ruby/1.8/x86_64-linux"]
                                                    "/usr/lib"
                                                    "ruby1.8"
         Just v -> do
