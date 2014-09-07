@@ -2,7 +2,7 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                hruby
-version:             0.2.6
+version:             0.2.7
 synopsis:            Embed Ruby in your Haskell program.
 description:         Warning: this is completely experimental. Everything you need should be in "Foreign.Ruby".
 license:             BSD3
@@ -27,7 +27,7 @@ library
                         , aeson                == 0.7.*
                         , bytestring           >= 0.10.0.2
                         , text                 >= 0.11
-                        , attoparsec           >= 0.11 && < 0.12
+                        , attoparsec           >= 0.11 && < 0.13
                         , vector               >= 0.10 && < 0.11
                         , unordered-containers >= 0.2 && < 0.3
                         , stm                  >= 2.4 && < 2.5
