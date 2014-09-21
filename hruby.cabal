@@ -24,7 +24,7 @@ library
   ghc-options:          -Wall
   extensions:           BangPatterns, OverloadedStrings
   build-depends:        base >= 4.6 && < 4.8
-                        , aeson                == 0.7.*
+                        , aeson                >= 0.7 && < 0.9
                         , bytestring           >= 0.10.0.2
                         , text                 >= 0.11
                         , attoparsec           >= 0.11 && < 0.13
