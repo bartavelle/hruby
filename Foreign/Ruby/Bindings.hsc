@@ -184,6 +184,33 @@ rtype v = rubyType v >>= \x -> case x of
     0x1d -> return (RBuiltin RICLASS)
     0x1e -> return (RBuiltin RZOMBIE)
 #else
+ #ifdef RUBY19
+    -- RUBY_T_COMPLEX  = 0x0e,
+    -- RUBY_T_RATIONAL = 0x0f,
+    -- RUBY_T_ZOMBIE = 0x1e,
+    0x00 -> return RNil
+    0x01 -> return (RBuiltin ROBJECT)
+    0x02 -> return (RBuiltin RCLASS)
+    0x03 -> return (RBuiltin RMODULE)
+    0x04 -> return (RBuiltin RFLOAT)
+    0x05 -> return (RBuiltin RSTRING)
+    0x06 -> return (RBuiltin RREGEXP)
+    0x07 -> return (RBuiltin RARRAY)
+    0x08 -> return (RBuiltin RHASH)
+    0x09 -> return (RBuiltin RSTRUCT)
+    0x0a -> return (RBuiltin RBIGNUM)
+    0x0b -> return (RBuiltin RFILE)
+    0x0c -> return (RBuiltin RDATA)
+    0x0d -> return (RBuiltin RMATCH)
+    0x11 -> return RNil
+    0x12 -> return RTrue
+    0x13 -> return RFalse
+    0x14 -> return RSymbol
+    0x15 -> return RFixNum
+    0x1b -> return RUndef
+    0x1c -> return (RBuiltin RNODE)
+    0x1d -> return (RBuiltin RICLASS)
+ #else
     0x00 -> return RUndef
     0x01 -> return RNil
     0x02 -> return (RBuiltin ROBJECT)
@@ -209,6 +236,7 @@ rtype v = rubyType v >>= \x -> case x of
     0x3d -> return (RBuiltin RVARMAP)
     0x3e -> return (RBuiltin RSCOPE)
     0x3f -> return (RBuiltin RNODE)
+ #endif
 #endif
     _ -> return RUndef
 

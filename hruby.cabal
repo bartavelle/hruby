@@ -23,7 +23,7 @@ library
   exposed-modules:      Foreign.Ruby, Foreign.Ruby.Bindings, Foreign.Ruby.Helpers, Foreign.Ruby.Safe
   ghc-options:          -Wall
   extensions:           BangPatterns, OverloadedStrings
-  build-depends:        base >= 4.6 && < 4.8
+  build-depends:        base >= 4.6
                         , aeson                >= 0.7 && < 0.9
                         , bytestring           >= 0.10.0.2
                         , text                 >= 0.11

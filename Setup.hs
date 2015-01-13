@@ -56,9 +56,9 @@ getRubyInfo = do
 defsFor :: RubyInfo -> [String]
 defsFor info =
     case rbVersion info of
-        (1, _, _) -> []
         (2, 0, _) -> ["-DRUBY2"]
         (2, _, _) -> ["-DRUBY2", "-DRUBY21"]
+        (a, b, _) -> ["-DRUBY" ++ show a ++ show b]
 
 can'tFindRuby :: String
 can'tFindRuby = unlines $ [ "Could not find the ruby library. Ensure that it is present on your system (on Debian/Ubuntu, make sure you installed the ruby1.8-dev package)."
@@ -95,19 +95,21 @@ myConfHook h = do
                                 , includeDirs  = includeDirs buildinfos ++ rbIncludes info
                                 , ccOptions    = ccOptions buildinfos ++ defsFor info
                                 }
-                in putStrLn ("Detected ruby: " ++ show info) >> return (setBuildInfo h bi)
+                in putStrLn ("Detected ruby: " ++ show info ++ " cc:" ++ show (ccOptions bi)) >> return (setBuildInfo h bi)
         _ -> warn normal can'tFindRuby >> return h
 
 parseFlags :: [String] -> LocalBuildInfo -> IO LocalBuildInfo
 parseFlags flags h = return $ setBuildInfo h $ foldl' parseFlags' bbi flags
     where
         bbi = getBuildInfo h
-        parseFlags' bi fl = case (stripPrefix "--rubylib=" fl, stripPrefix "--rubyinc=" fl, stripPrefix "--rubyversion=" fl) of
-                                (Just l, _, _)    -> bi { extraLibs   = l : extraLibs bi }
-                                (_, Just l, _)    -> bi { includeDirs = l : includeDirs bi }
-                                (_, _, Just "20") -> bi { ccOptions   = "-DRUBY2" : ccOptions bi }
-                                (_, _, Just "21") -> bi { ccOptions   = "-DRUBY2" : "-DRUBY21" : ccOptions bi }
-                                _                 -> bi
+        addOptions (Just "20") bi = bi { ccOptions   = "-DRUBY2" : ccOptions bi }
+        addOptions (Just "21") bi = bi { ccOptions   = "-DRUBY2" : "-DRUBY21" : ccOptions bi }
+        addOptions (Just x) bi = bi { ccOptions = ("-DRUBY" ++ take 2 x) : ccOptions bi }
+        addOptions Nothing bi = bi
+        parseFlags' bi fl = addOptions (stripPrefix "--rubyversion=" fl) $ case (stripPrefix "--rubylib=" fl, stripPrefix "--rubyinc=" fl) of
+                                        (Just l, _)    -> bi { extraLibs   = l : extraLibs bi }
+                                        (_, Just l)    -> bi { includeDirs = l : includeDirs bi }
+                                        _              -> bi
 
 main :: IO ()
 main = do
