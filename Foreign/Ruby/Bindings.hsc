@@ -1,6 +1,7 @@
 {-# LANGUAGE ForeignFunctionInterface, FlexibleInstances, CPP #-}
 
 #include "shim.h"
+#include <ruby.h>
 
 module Foreign.Ruby.Bindings where
 
@@ -52,15 +53,6 @@ data RBuiltin = RNONE
               | RSYMBOL
               | RUNDEF
               | RNODE
-#ifdef RUBY2
-              | RCOMPLEX
-              | RRATIONAL
-              | RZOMBIE
-#else
-              | RBLKTAG
-              | RVARMAP
-              | RSCOPE
-#endif
               deriving (Show)
 
 -- | Ruby native types, as encoded in the Value type.
@@ -157,88 +149,29 @@ rbUndef = intPtrToPtr 6
 
 rtype :: RValue -> IO RType
 rtype v = rubyType v >>= \x -> case x of
-#ifdef RUBY2
-    0x00 -> return RUndef
-    0x01 -> return (RBuiltin ROBJECT)
-    0x02 -> return (RBuiltin RCLASS)
-    0x03 -> return (RBuiltin RMODULE)
-    0x04 -> return (RBuiltin RFLOAT)
-    0x05 -> return (RBuiltin RSTRING)
-    0x06 -> return (RBuiltin RREGEXP)
-    0x07 -> return (RBuiltin RARRAY)
-    0x08 -> return (RBuiltin RHASH)
-    0x09 -> return (RBuiltin RSTRUCT)
-    0x0a -> return (RBuiltin RBIGNUM)
-    0x0b -> return (RBuiltin RFILE)
-    0x0c -> return (RBuiltin RDATA)
-    0x0d -> return (RBuiltin RMATCH)
-    0x0e -> return (RBuiltin RCOMPLEX)
-    0x0f -> return (RBuiltin RRATIONAL)
-    0x11 -> return RNil
-    0x12 -> return RTrue
-    0x13 -> return RFalse
-    0x14 -> return RSymbol
-    0x15 -> return RFixNum
-    0x1b -> return (RBuiltin RUNDEF)
-    0x1c -> return (RBuiltin RNODE)
-    0x1d -> return (RBuiltin RICLASS)
-    0x1e -> return (RBuiltin RZOMBIE)
-#else
- #ifdef RUBY19
-    -- RUBY_T_COMPLEX  = 0x0e,
-    -- RUBY_T_RATIONAL = 0x0f,
-    -- RUBY_T_ZOMBIE = 0x1e,
-    0x00 -> return RNil
-    0x01 -> return (RBuiltin ROBJECT)
-    0x02 -> return (RBuiltin RCLASS)
-    0x03 -> return (RBuiltin RMODULE)
-    0x04 -> return (RBuiltin RFLOAT)
-    0x05 -> return (RBuiltin RSTRING)
-    0x06 -> return (RBuiltin RREGEXP)
-    0x07 -> return (RBuiltin RARRAY)
-    0x08 -> return (RBuiltin RHASH)
-    0x09 -> return (RBuiltin RSTRUCT)
-    0x0a -> return (RBuiltin RBIGNUM)
-    0x0b -> return (RBuiltin RFILE)
-    0x0c -> return (RBuiltin RDATA)
-    0x0d -> return (RBuiltin RMATCH)
-    0x11 -> return RNil
-    0x12 -> return RTrue
-    0x13 -> return RFalse
-    0x14 -> return RSymbol
-    0x15 -> return RFixNum
-    0x1b -> return RUndef
-    0x1c -> return (RBuiltin RNODE)
-    0x1d -> return (RBuiltin RICLASS)
- #else
-    0x00 -> return RUndef
-    0x01 -> return RNil
-    0x02 -> return (RBuiltin ROBJECT)
-    0x03 -> return (RBuiltin RCLASS)
-    0x04 -> return (RBuiltin RICLASS)
-    0x05 -> return (RBuiltin RMODULE)
-    0x06 -> return (RBuiltin RFLOAT)
-    0x07 -> return (RBuiltin RSTRING)
-    0x08 -> return (RBuiltin RREGEXP)
-    0x09 -> return (RBuiltin RARRAY)
-    0x0a -> return RFixNum
-    0x0b -> return (RBuiltin RHASH)
-    0x0c -> return (RBuiltin RSTRUCT)
-    0x0d -> return (RBuiltin RBIGNUM)
-    0x0e -> return (RBuiltin RFILE)
-    0x20 -> return RTrue
-    0x21 -> return RFalse
-    0x22 -> return (RBuiltin RDATA)
-    0x23 -> return (RBuiltin RMATCH)
-    0x24 -> return RSymbol
-    0x3b -> return (RBuiltin RBLKTAG)
-    0x3c -> return RUndef
-    0x3d -> return (RBuiltin RVARMAP)
-    0x3e -> return (RBuiltin RSCOPE)
-    0x3f -> return (RBuiltin RNODE)
- #endif
-#endif
-    _ -> return RUndef
+    (#const RUBY_T_NONE)   -> return RUndef
+    (#const RUBY_T_OBJECT) -> return (RBuiltin ROBJECT)
+    (#const RUBY_T_CLASS)  -> return (RBuiltin RCLASS)
+    (#const RUBY_T_MODULE) -> return (RBuiltin RMODULE)
+    (#const RUBY_T_FLOAT)  -> return (RBuiltin RFLOAT)
+    (#const RUBY_T_STRING) -> return (RBuiltin RSTRING)
+    (#const RUBY_T_REGEXP) -> return (RBuiltin RREGEXP)
+    (#const RUBY_T_ARRAY)  -> return (RBuiltin RARRAY)
+    (#const RUBY_T_HASH)   -> return (RBuiltin RHASH)
+    (#const RUBY_T_STRUCT) -> return (RBuiltin RSTRUCT)
+    (#const RUBY_T_BIGNUM) -> return (RBuiltin RBIGNUM)
+    (#const RUBY_T_FILE)   -> return (RBuiltin RFILE)
+    (#const RUBY_T_DATA)   -> return (RBuiltin RDATA)
+    (#const RUBY_T_MATCH)  -> return (RBuiltin RMATCH)
+    (#const RUBY_T_NIL)    -> return RNil
+    (#const RUBY_T_TRUE)   -> return RTrue
+    (#const RUBY_T_FALSE)  -> return RFalse
+    (#const RUBY_T_SYMBOL) -> return RSymbol
+    (#const RUBY_T_FIXNUM) -> return RFixNum
+    (#const RUBY_T_UNDEF)  -> return (RBuiltin RUNDEF)
+    (#const RUBY_T_NODE)   -> return (RBuiltin RNODE)
+    (#const RUBY_T_ICLASS) -> return (RBuiltin RICLASS)
+    _                      -> return RUndef
 
 rb_string_value_cstr :: RValue -> IO String
 rb_string_value_cstr v = do
