@@ -2,7 +2,7 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                hruby
-version:             0.2.7
+version:             0.2.8
 synopsis:            Embed Ruby in your Haskell program.
 description:         Warning: this is completely experimental. Everything you need should be in "Foreign.Ruby".
 license:             BSD3
@@ -39,7 +39,7 @@ library
 Test-Suite test-roundtrip
   hs-source-dirs: test
   type:           exitcode-stdio-1.0
-  ghc-options:    -Wall
+  ghc-options:    -Wall -threaded
   extensions:     OverloadedStrings
   build-depends:  base,hruby,aeson,QuickCheck,text,attoparsec,vector
   main-is:        roundtrip.hs

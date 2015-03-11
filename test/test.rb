@@ -1,21 +1,20 @@
 
 class TestClass
     def self.testfunc(val)
-        return val
         case val
             when Hash
-                puts "hash"
+                # puts "hash"
                 val.each do |k,v|
-                    puts "    #{k} => #{v}"
+                    # puts "    #{k} => #{v}"
                 end
-                puts "done"
+                # puts "done"
             when Array
-                puts "array"
+                # puts "array"
                 val.each do |x|
-                    puts "    #{x}"
+                    # puts "    #{x}"
                 end
             else
-                puts val
+                # puts val
         end
         val
     end

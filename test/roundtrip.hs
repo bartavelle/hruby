@@ -1,7 +1,8 @@
 module Main where
 
-import Foreign.Ruby.Helpers
+import Foreign.Ruby.Helpers(toRuby,fromRuby,freezeGC)
 import Foreign.Ruby.Bindings
+import Foreign.Ruby.Safe
 import Data.Aeson
 import Control.Monad
 import Test.QuickCheck
@@ -40,27 +41,30 @@ h = fmap object $ do
 instance Arbitrary Value where
     arbitrary = frequency [(1,s),(5,a),(1,b),(1,n),(5,h)]
 
-roundTrip :: Property
-roundTrip = monadicIO $ do
+roundTrip :: RubyInterpreter -> Property
+roundTrip i = monadicIO $ do
     v <- pick (arbitrary :: Gen Value)
-    void (run (setGC False))
-    rub <- run (toRuby v)
-    nxt <- run (safeMethodCall "TestClass" "testfunc" [rub])
-    case nxt of
-        Right x -> do
-            out <- run (fromRuby x)
-            void (run (setGC True))
-            run startGC
-            when (out /= Just v) (run (print out))
-            assert (Just v == out)
-        Left (rr,_) -> run (print rr) >> assert False
+    ex <- run $ freezeGC $ do
+        rub <- makeSafe i (toRuby v) >>= \r -> case r of
+                                                   Right r' -> return r'
+                                                   Left rr -> error (show rr)
+        nxt <- safeMethodCall i "TestClass" "testfunc" [rub]
+        case nxt of
+            Right x -> do
+                out <- makeSafe i (fromRuby x) >>= \r -> case r of
+                                                             Right r' -> return r'
+                                                             Left rr -> error (show rr)
+                when (out /= Just v) (print out)
+                return (Just v == out)
+            Left rr -> print rr >> return False
+    assert ex
 
 main :: IO ()
 main = do
-    ruby_init
-    ruby_init_loadpath
-    rb_define_module "test"
-    st <- rb_load_protect "./test/test.rb" 0
-    unless (st == 0) (showErrorStack >>= error)
-    quickCheckWith (stdArgs { maxSuccess = 1000 } ) roundTrip
-    ruby_finalize
+    i <- startRubyInterpreter
+    putStrLn "loading"
+    loadFile i "./test/test.rb" >>= \o -> case o of
+                                            Right () -> return ()
+                                            Left rr -> error (show rr)
+    quickCheckWith (stdArgs { maxSuccess = 1000 } ) (roundTrip i)
+    closeRubyInterpreter i
