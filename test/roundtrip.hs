@@ -1,8 +1,6 @@
 module Main where
 
-import Foreign.Ruby.Helpers(toRuby,fromRuby,freezeGC)
-import Foreign.Ruby.Bindings
-import Foreign.Ruby.Safe
+import Foreign.Ruby
 import Data.Aeson
 import Control.Monad
 import Test.QuickCheck
@@ -44,20 +42,25 @@ instance Arbitrary Value where
 roundTrip :: RubyInterpreter -> Property
 roundTrip i = monadicIO $ do
     v <- pick (arbitrary :: Gen Value)
-    ex <- run $ freezeGC $ do
-        rub <- makeSafe i (toRuby v) >>= \r -> case r of
-                                                   Right r' -> return r'
-                                                   Left rr -> error (show rr)
+    ex <- run $ freezeGC i $ do
+        putStrLn "a"
+        rub <- toRuby i v >>= \r -> case r of
+                                        Right r' -> return r'
+                                        Left rr -> error (show rr)
+        putStrLn "b"
         nxt <- safeMethodCall i "TestClass" "testfunc" [rub]
+        putStrLn "c"
         case nxt of
             Right x -> do
-                out <- makeSafe i (fromRuby x) >>= \r -> case r of
-                                                             Right r' -> return r'
-                                                             Left rr -> error (show rr)
-                when (out /= Just v) (print out)
-                return (Just v == out)
+                out <- fromRuby i x >>= \r -> case r of
+                                                  Right r' -> return r'
+                                                  Left rr -> error (show rr)
+                when (out /= v) (print out)
+                return (v == out)
             Left rr -> print rr >> return False
-    assert ex
+    case ex of
+        Left rr -> error (show rr)
+        Right z -> assert z
 
 main :: IO ()
 main = do

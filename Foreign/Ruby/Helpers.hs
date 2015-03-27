@@ -3,7 +3,6 @@ module Foreign.Ruby.Helpers where
 
 import Foreign.Ruby.Bindings
 
-import Data.Maybe (fromMaybe)
 import Foreign
 import Data.Aeson
 import Control.Monad
@@ -21,19 +20,19 @@ import Data.Scientific
 class FromRuby a where
     -- | To define more instances, please look at the instances defined in
     -- "Foreign.Ruby.Helpers".
-    fromRuby :: RValue -> IO (Maybe a)
+    fromRuby :: RValue -> IO (Either String a)
 
 -- | Whenever you use `ToRuby`, don't forget to use something like
 -- `freezeGC` or you will get random segfaults.
 class ToRuby a where
     toRuby   :: a -> IO RValue
 
-fromRubyIntegral :: Integral n => RValue -> IO (Maybe n)
-fromRubyIntegral = fmap (Just . fromIntegral) . num2long
+fromRubyIntegral :: Integral n => RValue -> IO (Either String n)
+fromRubyIntegral = fmap (Right . fromIntegral) . num2long
 toRubyIntegral :: Integral n => n -> IO RValue
 toRubyIntegral = int2num . fromIntegral
 
-fromRubyArray :: FromRuby a => RValue -> IO (Maybe [a])
+fromRubyArray :: FromRuby a => RValue -> IO (Either String [a])
 fromRubyArray v = do
     nbelems <- arrayLength v
     fmap sequence (forM [0..(nbelems-1)] (rb_ary_entry v >=> fromRuby))
@@ -43,7 +42,7 @@ instance FromRuby a => FromRuby [a] where
         t <- rtype v
         case t of
             RBuiltin RARRAY -> fromRubyArray v
-            _ -> putStrLn ("not an array! " ++ show t) >> return Nothing
+            _ -> return $ Left ("not an array! " ++ show t)
 
 instance ToRuby a => ToRuby [a] where
     toRuby lst = do
@@ -58,9 +57,9 @@ instance FromRuby BS.ByteString where
                 pv <- new v
                 cstr <- c_rb_string_value_cstr pv
                 free pv
-                fmap Just (BS.packCString cstr)
-            RSymbol -> fmap Just (rb_id2name (sym2id v) >>= BS.packCString)
-            _ -> return Nothing
+                fmap Right (BS.packCString cstr)
+            RSymbol -> fmap Right (rb_id2name (sym2id v) >>= BS.packCString)
+            _ -> return (Left ("Expected a string, not " ++ show t))
 instance ToRuby BS.ByteString where
     toRuby s = BS.useAsCString s c_rb_str_new2
 
@@ -72,7 +71,7 @@ instance ToRuby T.Text where
 instance ToRuby Double where
     toRuby = newFloat
 instance FromRuby Double where
-    fromRuby = fmap Just . num2dbl
+    fromRuby = fmap Right . num2dbl
 
 instance FromRuby Integer where
     fromRuby = fromRubyIntegral
@@ -92,23 +91,24 @@ instance FromRuby Value where
         t <- rtype v
         case t of
             RFixNum          -> fmap (fmap (Number . (fromIntegral :: Integer -> Scientific))) (fromRuby v)
-            RNil             -> return (Just Null)
-            RFalse           -> return (Just (Bool False))
-            RTrue            -> return (Just (Bool True))
+            RNil             -> return (Right Null)
+            RFalse           -> return (Right (Bool False))
+            RTrue            -> return (Right (Bool True))
             RSymbol          -> fmap (fmap (String . T.decodeUtf8)) (fromRuby v)
-            RBuiltin RNIL    -> return (Just Null)
+            RBuiltin RNIL    -> return (Right Null)
             RBuiltin RSTRING -> fmap (fmap (String . T.decodeUtf8)) (fromRuby v)
             RBuiltin RARRAY  -> fmap (fmap (Array . V.fromList)) (fromRubyArray v)
-            RBuiltin RTRUE   -> return (Just (Bool True))
-            RBuiltin RFALSE  -> return (Just (Bool False))
-            RBuiltin RUNDEF  -> return (Just Null)
+            RBuiltin RTRUE   -> return (Right (Bool True))
+            RBuiltin RFALSE  -> return (Right (Bool False))
+            RBuiltin RUNDEF  -> return (Right Null)
             RBuiltin RFLOAT  -> fmap (fmap (Number . fromRational . (toRational :: Double -> Rational))) (fromRuby v)
             RBuiltin RBIGNUM -> do
                 bs <- rb_big2str v 10 >>= fromRuby
-                case fmap BS.readInteger bs of
-                    Just (Just (x,"")) -> return (Just (Number (fromIntegral x)))
-                    _ -> return Nothing
-            RBuiltin RNONE -> return (Just Null)
+                return $ case fmap BS.readInteger bs of
+                    Right (Just (x,"")) -> Right (Number (fromIntegral x))
+                    Right _ -> Left ("Expected an integer, not " ++ show bs)
+                    Left rr -> Left rr
+            RBuiltin RNONE -> return (Right Null)
             RBuiltin RHASH   -> do
                 var <- newIORef []
                 let appender :: RValue -> RValue -> RValue -> IO Int
@@ -117,16 +117,14 @@ instance FromRuby Value where
                         vk <- fromRuby key
                         vv <- fromRuby val
                         case (vk, vv) of
-                            (Just jk, Just jv) -> writeIORef var ( (jk,jv) : vvar ) >> return 0
+                            (Right jk, Right jv) -> writeIORef var ( (jk,jv) : vvar ) >> return 0
                             _ -> return 1
                     toHash = Object . HM.fromList
                 wappender <- mkRegisteredCB3 appender
                 rb_hash_foreach v wappender rbNil
                 freeHaskellFunPtr wappender
-                fmap (Just . toHash) (readIORef var)
-            _ -> do
-                putStrLn ("Could not decode: " ++ show t)
-                return Nothing
+                fmap (Right . toHash) (readIORef var)
+            _ -> return $ Left ("Could not decode: " ++ show t)
 
 instance ToRuby Scientific where
     toRuby s | base10Exponent s >= 0 = toRuby (coefficient s)
@@ -148,14 +146,7 @@ instance ToRuby Value where
             rb_hash_aset hash rk rv
         return hash
 
--- | This transforms any Haskell value into a Ruby big integer encoding the
--- address of the corresponding `StablePtr`. This is useful when you want
--- to pass such values to a Ruby program that will call Haskell functions.
---
--- This is probably a bad idea to do this. The use case is for calling
--- Haskell functions from Ruby, using values generated from the Haskell
--- world. If your main program is in Haskell, you should probably wrap
--- a function partially applied with the value you would want to embed.
+-- | An unsafe version of the corresponding "Foreign.Ruby.Safe" function.
 embedHaskellValue :: a -> IO RValue
 embedHaskellValue v = do
     intptr <- fmap (fromIntegral . ptrToIntPtr . castStablePtrToPtr) (newStablePtr v) :: IO Integer
@@ -168,10 +159,10 @@ embedHaskellValue v = do
 -- `embedHaskellValue`.
 freeHaskellValue :: RValue -> IO ()
 freeHaskellValue v = do
-    intptr <- fromRuby v :: IO (Maybe Integer)
+    intptr <- fromRuby v :: IO (Either String Integer)
     case intptr of
-        Just i -> freeStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
-        Nothing -> error "Could not decode embedded value during free!"
+        Right i -> freeStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
+        Left rr -> error ("Could not decode embedded value during free! " ++ rr)
 
 -- | This is unsafe as hell, so you'd better be certain this RValue has not
 -- been tempered with : GC frozen, bugfree Ruby scripts.
@@ -180,10 +171,10 @@ freeHaskellValue v = do
 -- a good vector for arbitrary code execution.
 extractHaskellValue :: RValue -> IO a
 extractHaskellValue v = do
-    intptr <- fromRuby v :: IO (Maybe Integer)
+    intptr <- fromRuby v :: IO (Either String Integer)
     case intptr of
-        Just i -> deRefStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
-        Nothing -> error "Could not decode embedded value!"
+        Right i -> deRefStablePtr (castPtrToStablePtr (intPtrToPtr (fromIntegral i)))
+        Left rr -> error ("Could not decode embedded value! " ++ rr)
 
 runscript :: String -> IO (Either String ())
 runscript filename = do
@@ -230,11 +221,11 @@ showErrorStack = do
              then return "Unknown runtime error"
              else do
                  message <- rb_intern "message"
-                 fmap (fromMaybe "undeserializable error") (rb_funcall runtimeerror message [] >>= fromRuby)
+                 fmap (either T.pack id) (rb_funcall runtimeerror message [] >>= fromRuby)
     rbt <- rb_gv_get "$@"
     bt <- if rbt == rbNil
               then return []
-              else fmap (fromMaybe []) (fromRuby rbt)
+              else fmap (either (const []) id) (fromRuby rbt)
     return (T.unpack (T.unlines (m : bt)))
 
 -- | Sets the current GC operation. Please note that this could be modified

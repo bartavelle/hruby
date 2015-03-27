@@ -6,6 +6,7 @@ module Foreign.Ruby.Safe
     ( -- * Initialization and finalization
       startRubyInterpreter
     , closeRubyInterpreter
+    , withRubyInterpreter
     -- * Data types
     , RubyError(..)
     , RValue
@@ -15,6 +16,9 @@ module Foreign.Ruby.Safe
     , embedHaskellValue
     , safeMethodCall
     , makeSafe
+    , fromRuby
+    , toRuby
+    , freezeGC
     -- * Wrapping Haskell function and registering them
     , RubyFunction1
     , RubyFunction2
@@ -29,8 +33,10 @@ module Foreign.Ruby.Safe
     ) where
 
 import Foreign hiding (void)
-import qualified Foreign.Ruby as FR
+import qualified Foreign.Ruby.Helpers as FR
+import Control.Applicative
 import Control.Concurrent
+import Control.Exception.Base
 import Control.Concurrent.STM
 import Control.Monad
 import Foreign.Ruby.Bindings
@@ -50,7 +56,7 @@ data RubyError = Stack !String !String
                | WithOutput !String !RValue
                deriving Show
 
--- | This is acutally a newtype around a 'TQueue'.
+-- | This is actually a newtype around a 'TQueue'.
 newtype RubyInterpreter = RubyInterpreter (TQueue IMessage)
 
 -- | All those function types can be used to register functions to the Ruby
@@ -96,7 +102,14 @@ makeSafe int a = do
         Right _ -> Right `fmap` atomically (readTMVar mv)
         Left rr -> return (Left rr)
 
--- | A safe version of the corresponding "Foreign.Ruby" function.
+-- | This transforms any Haskell value into a Ruby big integer encoding the
+-- address of the corresponding `StablePtr`. This is useful when you want
+-- to pass such values to a Ruby program that will call Haskell functions.
+--
+-- This is probably a bad idea to do this. The use case is for calling
+-- Haskell functions from Ruby, using values generated from the Haskell
+-- world. If your main program is in Haskell, you should probably wrap
+-- a function partially applied with the value you would want to embed.
 embedHaskellValue :: RubyInterpreter -> a -> IO (Either RubyError RValue)
 embedHaskellValue int v = makeSafe int $ FR.embedHaskellValue v
 
@@ -126,8 +139,15 @@ runMessage_ (RubyInterpreter q) pm = do
 startRubyInterpreter :: IO RubyInterpreter
 startRubyInterpreter = do
     q <- newTQueueIO
-    void $ forkOS (FR.initialize >> go q)
+    void $ forkOS (ruby_init >> ruby_init_loadpath >> go q)
     return (RubyInterpreter q)
+
+{-| This is basically
+
+> bracket startRubyInterpreter closeRubyInterpreter
+-}
+withRubyInterpreter :: (RubyInterpreter -> IO a) -> IO a
+withRubyInterpreter = bracket startRubyInterpreter closeRubyInterpreter
 
 go :: TQueue IMessage -> IO ()
 go q = do
@@ -158,10 +178,22 @@ go q = do
         RegisterGlobalFunction5 fname f no -> runNoOutput no $ mkRegisteredRubyFunction5 f >>= \rf -> rb_define_global_function fname rf 4
         MakeSafe a no -> runNoOutput no a
     if finished
-        then FR.finalize
+        then ruby_finalize
         else go q
 
 -- | This will shut the internal server down.
 closeRubyInterpreter :: RubyInterpreter -> IO ()
 closeRubyInterpreter (RubyInterpreter q) = atomically (writeTQueue q MsgStop)
 
+-- | Converts a Ruby value to some Haskell type..
+fromRuby :: FR.FromRuby a => RubyInterpreter -> RValue -> IO (Either RubyError a)
+fromRuby ri rv = either Left (either (Left . Stack "?") Right) <$> makeSafe ri (FR.fromRuby rv)
+
+-- | Insert a value in the Ruby runtime. You must always use such
+-- a function and the resulting RValue ina 'freezeGC' call.
+toRuby :: FR.ToRuby a => RubyInterpreter -> a -> IO (Either RubyError RValue)
+toRuby ri = makeSafe ri . FR.toRuby
+
+-- | Runs a computation with the Ruby GC disabled. Once the computation is over, GC will be re-enabled and the `startGC` function run.
+freezeGC :: RubyInterpreter -> IO a -> IO (Either RubyError a)
+freezeGC ri = makeSafe ri . FR.freezeGC
