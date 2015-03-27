@@ -36,7 +36,11 @@ getRubyInfo = do
     version     <- evalRuby "print '('+RUBY_VERSION.gsub('.', ',')+')'" >>= (return . fmap read)
     case version of
         Nothing -> return Nothing
-        Just (1,9,_) -> error "Ruby 1.9 cannot be integrated with the GHC runtime. Tough luck :("
+        Just (1,9,_) -> error $ unlines [ "Ruby 1.9 cannot be integrated with the GHC runtime. Tough luck :("
+                                        , "On Ubuntu 14.04, you can try this:"
+                                        , "  apt-get install libruby2.0 ruby2.0-dev"
+                                        , "  cabal install hrupy -p --configure-option=\"--rubyversion=20 --rubylib=ruby-2.0 --rubyinc=/usr/include/ruby-2.0.0 --rubyinc=/usr/include/x86_64-linux-gnu/ruby-2.0.0\""
+                                        ]
         Just v@(1,8,_) -> return $ Just $ RubyInfo v
                                                    "/usr/lib/ruby/1.8"
                                                    ["/usr/lib/ruby/1.8/x86_64-linux","/usr/lib64/ruby/1.8/x86_64-linux"]
