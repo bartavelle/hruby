@@ -23,7 +23,7 @@ library
   exposed-modules:      Foreign.Ruby, Foreign.Ruby.Bindings, Foreign.Ruby.Helpers, Foreign.Ruby.Safe
   ghc-options:          -Wall
   extensions:           BangPatterns, OverloadedStrings
-  build-depends:        base >= 4.6
+  build-depends:        base >= 4.6 && < 4.8
                         , aeson                >= 0.7 && < 0.9
                         , bytestring           >= 0.10.0.2
                         , text                 >= 0.11
@@ -41,7 +41,7 @@ Test-Suite test-roundtrip
   type:           exitcode-stdio-1.0
   ghc-options:    -Wall -threaded
   extensions:     OverloadedStrings
-  build-depends:  base,hruby,aeson,QuickCheck,text,attoparsec,vector
+  build-depends:  base >= 4.6 && < 4.8,hruby,aeson,QuickCheck,text,attoparsec,vector
   main-is:        roundtrip.hs
 
 
