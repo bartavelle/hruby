@@ -52,8 +52,9 @@ data IMessage = MsgStop
               | RegisterGlobalFunction5 !String !RubyFunction5 !NoOutput
               | MakeSafe !(IO ()) !NoOutput
 
-data RubyError = Stack !String !String
-               | WithOutput !String !RValue
+data RubyError = Stack String String
+               | WithOutput String RValue
+               | OtherError String
                deriving Show
 
 -- | This is actually a newtype around a 'TQueue'.
@@ -95,11 +96,11 @@ makeSafe :: RubyInterpreter -> IO a -> IO (Either RubyError a)
 makeSafe int a = do
     -- the IO a computation is embedded in an IO () computation, so that
     -- all is type safe
-    mv <- newEmptyTMVarIO
-    let embedded = a >>= atomically . putTMVar mv
+    mv <- newEmptyMVar
+    let embedded = a >>= putMVar mv
     msg <- runMessage_ int (MakeSafe embedded)
     case msg of
-        Right _ -> Right `fmap` atomically (readTMVar mv)
+        Right _ -> Right <$> takeMVar mv
         Left rr -> return (Left rr)
 
 -- | This transforms any Haskell value into a Ruby big integer encoding the
@@ -130,9 +131,7 @@ runMessage_ :: RubyInterpreter -> (NoOutput -> IMessage) -> IO (Either RubyError
 runMessage_ (RubyInterpreter q) pm = do
     o <- newEmptyTMVarIO
     atomically (writeTQueue q (pm o))
-    atomically (readTMVar o) >>= \case
-        Nothing -> return (Right ())
-        Just r  -> return (Left r)
+    maybe (Right ()) Left <$> atomically (readTMVar o)
 
 -- | Initializes a Ruby interpreter. This should only be called once. It
 -- actually runs an internal server in a dedicated OS thread.
@@ -142,7 +141,7 @@ startRubyInterpreter = do
     void $ forkOS (ruby_init >> ruby_init_loadpath >> go q)
     return (RubyInterpreter q)
 
-{-| This is basically
+{-| This is basically :
 
 > bracket startRubyInterpreter closeRubyInterpreter
 -}
@@ -155,17 +154,18 @@ go q = do
         stop     = return True
         runNoOutput :: NoOutput -> IO () -> IO Bool
         runNoOutput no a = do
-            a -- TODO catch exceptions
-            atomically $ putTMVar no Nothing
+            try a >>= atomically . putTMVar no . either (\e -> Just $ OtherError $ show (e :: SomeException))
+                                                        (const Nothing)
             continue
         runReturns0 :: NoOutput -> IO Int -> String -> IO Bool
         runReturns0 no a errmsg  = do
-            s <- a -- TODO catch exceptions
-            if s == 0
-                then atomically (putTMVar no Nothing)
-                else do
+            s <- try a
+            case s of
+                Right 0 -> atomically (putTMVar no Nothing)
+                Right _ -> do
                     stack <- FR.showErrorStack
                     atomically $ putTMVar no $ Just $ Stack errmsg stack
+                Left e -> atomically $ putTMVar no $ Just $ OtherError $ show (e :: SomeException)
             continue
 
     finished <- atomically (readTQueue q) >>= \case
@@ -187,7 +187,7 @@ closeRubyInterpreter (RubyInterpreter q) = atomically (writeTQueue q MsgStop)
 
 -- | Converts a Ruby value to some Haskell type..
 fromRuby :: FR.FromRuby a => RubyInterpreter -> RValue -> IO (Either RubyError a)
-fromRuby ri rv = either Left (either (Left . Stack "?") Right) <$> makeSafe ri (FR.fromRuby rv)
+fromRuby ri rv = either Left (either (Left . OtherError) Right) <$> makeSafe ri (FR.fromRuby rv)
 
 -- | Insert a value in the Ruby runtime. You must always use such
 -- a function and the resulting RValue ina 'freezeGC' call.
@@ -195,5 +195,5 @@ toRuby :: FR.ToRuby a => RubyInterpreter -> a -> IO (Either RubyError RValue)
 toRuby ri = makeSafe ri . FR.toRuby
 
 -- | Runs a computation with the Ruby GC disabled. Once the computation is over, GC will be re-enabled and the `startGC` function run.
-freezeGC :: RubyInterpreter -> IO a -> IO (Either RubyError a)
-freezeGC ri = makeSafe ri . FR.freezeGC
+freezeGC :: RubyInterpreter -> IO a -> IO a
+freezeGC ri c = makeSafe ri (FR.setGC False) *> c <* makeSafe ri (FR.setGC True >> FR.startGC)

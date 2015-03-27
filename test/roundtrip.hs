@@ -6,11 +6,7 @@ import Control.Monad
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import qualified Data.Text as T
-import Data.Attoparsec.Number
 import qualified Data.Vector as V
-
-instance Arbitrary Number where
-    arbitrary = frequency [ (1, fmap D arbitrary) , (1, fmap I arbitrary) ]
 
 subvalue :: Gen Value
 subvalue = frequency [(50,s),(20,b),(20,n),(1,h),(1,a)]
@@ -36,20 +32,15 @@ h = fmap object $ do
         v <- listOf subvalue
         return (zip k v)
 
-instance Arbitrary Value where
-    arbitrary = frequency [(1,s),(5,a),(1,b),(1,n),(5,h)]
+avalue :: Gen Value
+avalue = frequency [(1,s),(5,a),(1,b),(1,n),(5,h)]
 
 roundTrip :: RubyInterpreter -> Property
 roundTrip i = monadicIO $ do
-    v <- pick (arbitrary :: Gen Value)
+    v <- pick avalue
     ex <- run $ freezeGC i $ do
-        putStrLn "a"
-        rub <- toRuby i v >>= \r -> case r of
-                                        Right r' -> return r'
-                                        Left rr -> error (show rr)
-        putStrLn "b"
+        rub <- toRuby i v >>= either (error . show) return
         nxt <- safeMethodCall i "TestClass" "testfunc" [rub]
-        putStrLn "c"
         case nxt of
             Right x -> do
                 out <- fromRuby i x >>= \r -> case r of
@@ -58,16 +49,9 @@ roundTrip i = monadicIO $ do
                 when (out /= v) (print out)
                 return (v == out)
             Left rr -> print rr >> return False
-    case ex of
-        Left rr -> error (show rr)
-        Right z -> assert z
+    assert ex
 
 main :: IO ()
-main = do
-    i <- startRubyInterpreter
-    putStrLn "loading"
-    loadFile i "./test/test.rb" >>= \o -> case o of
-                                            Right () -> return ()
-                                            Left rr -> error (show rr)
+main = withRubyInterpreter $ \i -> do
+    loadFile i "./test/test.rb" >>= either (error . show) return
     quickCheckWith (stdArgs { maxSuccess = 1000 } ) (roundTrip i)
-    closeRubyInterpreter i
