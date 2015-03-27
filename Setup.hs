@@ -36,6 +36,7 @@ getRubyInfo = do
     version     <- evalRuby "print '('+RUBY_VERSION.gsub('.', ',')+')'" >>= (return . fmap read)
     case version of
         Nothing -> return Nothing
+        Just (1,9,_) -> error "Ruby 1.9 cannot be integrated with the GHC runtime. Tough luck :("
         Just v@(1,8,_) -> return $ Just $ RubyInfo v
                                                    "/usr/lib/ruby/1.8"
                                                    ["/usr/lib/ruby/1.8/x86_64-linux","/usr/lib64/ruby/1.8/x86_64-linux"]

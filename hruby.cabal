@@ -2,9 +2,9 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                hruby
-version:             0.2.8
-synopsis:            Embed Ruby in your Haskell program.
-description:         Warning: this is completely experimental. Everything you need should be in "Foreign.Ruby".
+version:             0.2.9
+synopsis:            Embed a Ruby intepreter in your Haskell program !
+description:         This doesn't work with Ruby 1.9. Everything you need should be in Foreign.Ruby.Safe.
 license:             BSD3
 license-file:        LICENSE
 author:              Simon Marechal
