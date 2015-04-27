@@ -38,6 +38,7 @@ library
   install-includes:     cbits/shim.h
   include-dirs:         cbits
   Includes:             "ruby.h"
+  extra-libraries:      ruby
 
 Test-Suite test-roundtrip
   hs-source-dirs: test

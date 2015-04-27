@@ -112,7 +112,7 @@ parseFlags flags h = return $ setBuildInfo h $ foldl' parseFlags' bbi flags
         addOptions (Just x) bi = bi { ccOptions = ("-DRUBY" ++ take 2 x) : ccOptions bi }
         addOptions Nothing bi = bi
         parseFlags' bi fl = addOptions (stripPrefix "--rubyversion=" fl) $ case (stripPrefix "--rubylib=" fl, stripPrefix "--rubyinc=" fl) of
-                                        (Just l, _)    -> bi { extraLibs   = l : extraLibs bi }
+                                        (Just l, _)    -> bi { extraLibs   = l : filter (/= "ruby") (extraLibs bi) }
                                         (_, Just l)    -> bi { includeDirs = l : includeDirs bi }
                                         _              -> bi
 
