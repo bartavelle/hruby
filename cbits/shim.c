@@ -1,4 +1,18 @@
 #include "shim.h"
+#include <ruby/encoding.h>
+
+void ruby_initialization(void) {
+	RUBY_INIT_STACK;
+	ruby_init();
+	ruby_init_loadpath();
+	VALUE encoding = rb_enc_from_encoding(rb_filesystem_encoding());
+	rb_enc_set_default_internal(encoding);
+	rb_enc_set_default_external(encoding);
+	void rb_encdb_declare(const char *name);
+	rb_encdb_declare("ASCII-8BIT");
+	rb_encdb_declare("US-ASCII");
+	rb_encdb_declare("UTF-8");
+}
 
 VALUE safeCall(VALUE args)
 {

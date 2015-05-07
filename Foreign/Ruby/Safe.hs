@@ -138,7 +138,7 @@ runMessage_ (RubyInterpreter q) pm = do
 startRubyInterpreter :: IO RubyInterpreter
 startRubyInterpreter = do
     q <- newTQueueIO
-    void $ forkOS (ruby_init >> ruby_init_loadpath >> go q)
+    void $ forkOS (ruby_initialization >> go q)
     return (RubyInterpreter q)
 
 {-| This is basically :

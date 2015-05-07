@@ -79,9 +79,8 @@ foreign import ccall "wrapper" mkRegistered2 :: Registered2 -> IO (FunPtr Regist
 type RegisteredCB3 = RValue -> RValue -> RValue -> IO Int
 foreign import ccall "wrapper" mkRegisteredCB3 :: RegisteredCB3 -> IO (FunPtr RegisteredCB3)
 
-foreign import ccall "ruby_init"                 ruby_init                   :: IO ()
 foreign import ccall "ruby_finalize"             ruby_finalize               :: IO ()
-foreign import ccall "ruby_init_loadpath"        ruby_init_loadpath          :: IO ()
+foreign import ccall "ruby_initialization"       ruby_initialization         :: IO ()
 #ifdef RUBY21
 foreign import ccall "rb_str_new_cstr"           c_rb_str_new2               :: CString -> IO RValue
 foreign import ccall "rb_ary_new_capa"           rb_ary_new2                 :: CLong -> IO RValue

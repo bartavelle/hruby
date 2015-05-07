@@ -3,6 +3,8 @@
 #include <ruby/intern.h>
 #endif
 
+void ruby_initialization(void);
+
 struct s_dispatch {
 	char * classname;
 	char * methodname;

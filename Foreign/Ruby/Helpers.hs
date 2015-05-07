@@ -178,8 +178,7 @@ extractHaskellValue v = do
 
 runscript :: String -> IO (Either String ())
 runscript filename = do
-    ruby_init
-    ruby_init_loadpath
+    ruby_initialization
     status <- rb_load_protect filename 0
     if status == 0
         then ruby_finalize >> return (Right ())
