@@ -33,7 +33,7 @@ evalRuby exp = do
 
 getRubyInfo :: IO (Maybe RubyInfo)
 getRubyInfo = do
-    version     <- evalRuby "print '('+RUBY_VERSION.gsub('.', ',')+')'" >>= (return . fmap read)
+    version     <- fmap (fmap read) (evalRuby "print '('+RUBY_VERSION.gsub('.', ',')+')'")
     case version of
         Nothing -> return Nothing
         Just (1,9,_) -> error $ unlines [ "Ruby 1.9 cannot be integrated with the GHC runtime. Tough luck :("
@@ -43,7 +43,7 @@ getRubyInfo = do
                                         ]
         Just v@(1,8,_) -> return $ Just $ RubyInfo v
                                                    "/usr/lib/ruby/1.8"
-                                                   ["/usr/lib/ruby/1.8/x86_64-linux","/usr/lib64/ruby/1.8/x86_64-linux"]
+                                                   ["/usr/lib/ruby/1.8/x86_64-linux","/usr/lib/ruby/1.8/x86_64-linux","/usr/lib64/ruby/1.8/x86_64-linux"]
                                                    "/usr/lib"
                                                    "ruby1.8"
         Just v -> do
@@ -65,16 +65,16 @@ defsFor info =
         (2, _, _) -> ["-DRUBY2", "-DRUBY21"]
         (a, b, _) -> ["-DRUBY" ++ show a ++ show b]
 
-can'tFindRuby :: String
-can'tFindRuby = unlines $ [ "Could not find the ruby library. Ensure that it is present on your system (on Debian/Ubuntu, make sure you installed the ruby1.8-dev package)."
-                          , "If you know it to be installed, please install hruby in the following way (example for nix):"
-                          , ""
-                          , "$ cabal install hruby -p --configure-option=\"--rubyversion=19 --rubylib=ruby --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1 --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1/x86_64-linux' --extra-lib-dirs=$HOME/.nix-profile/lib/\""
-                          , ""
-                          , " --rubylib : Should be the name of the library passed to the linker (ruby for libruby.so)."
-                          , " --rubyinc : There can be several instances of this flag. Should be the path of the various ruby header files."
-                          , " --rubyversion : Mandatory for ruby 2.0 and 2.1, should have the values 20 or 21."
-                          ]
+cantFindRuby :: String
+cantFindRuby = unlines [ "Could not find the ruby library. Ensure that it is present on your system (on Debian/Ubuntu, make sure you installed the ruby1.8-dev package)."
+                       , "If you know it to be installed, please install hruby in the following way (example for nix):"
+                       , ""
+                       , "$ cabal install hruby -p --configure-option=\"--rubyversion=19 --rubylib=ruby --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1 --rubyinc=/nix/store/v0w14mdpcy9c0qwvhqa7154qsv53ifqn-ruby-1.9.3-p484/include/ruby-1.9.1/x86_64-linux' --extra-lib-dirs=$HOME/.nix-profile/lib/\""
+                       , ""
+                       , " --rubylib : Should be the name of the library passed to the linker (ruby for libruby.so)."
+                       , " --rubyinc : There can be several instances of this flag. Should be the path of the various ruby header files."
+                       , " --rubyversion : Mandatory for ruby 2.0 and 2.1, should have the values 20 or 21."
+                       ]
 
 getBuildInfo :: LocalBuildInfo -> BuildInfo
 getBuildInfo l = case library (localPkgDescr l) of
@@ -93,15 +93,15 @@ myConfHook :: LocalBuildInfo -> IO LocalBuildInfo
 myConfHook h = do
     mrubyInfo <- getRubyInfo
     case mrubyInfo of
-        Just (info) ->
+        Just info ->
             let buildinfos = getBuildInfo h
-                bi = buildinfos { extraLibs    = rbLibName info : extraLibs buildinfos
+                bi = buildinfos { extraLibs    = [rbLibName info]
                                 , extraLibDirs = rbLib info : extraLibDirs buildinfos
                                 , includeDirs  = includeDirs buildinfos ++ rbIncludes info
                                 , ccOptions    = ccOptions buildinfos ++ defsFor info
                                 }
                 in putStrLn ("Detected ruby: " ++ show info ++ " cc:" ++ show (ccOptions bi)) >> return (setBuildInfo h bi)
-        _ -> warn normal can'tFindRuby >> return h
+        _ -> warn normal cantFindRuby >> return h
 
 parseFlags :: [String] -> LocalBuildInfo -> IO LocalBuildInfo
 parseFlags flags h = return $ setBuildInfo h $ foldl' parseFlags' bbi flags
@@ -123,4 +123,4 @@ main = do
     let hook = if null flags
                    then myConfHook
                    else parseFlags (concatMap words flags)
-    defaultMainWithHooks $ simpleUserHooks { confHook = (\a b -> configure a b >>= hook) }
+    defaultMainWithHooks $ simpleUserHooks { confHook = \a b -> configure a b >>= hook }
