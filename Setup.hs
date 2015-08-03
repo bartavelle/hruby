@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 import Distribution.Simple
 import Distribution.Verbosity
 import Distribution.Simple.Configure
@@ -10,10 +11,13 @@ import System.Process
 import System.Exit
 
 import Control.Applicative
+import Control.Exception
 
 import Data.List (partition,stripPrefix,foldl')
 import Data.Maybe (mapMaybe)
 
+-- --rubyversion=20 --rubylib=ruby-2.0 --rubyinc=/usr/include/ruby-2.0.0 --rubyinc=/usr/include/x86_64-linux-gnu/ruby-2.0.0
+-- {rbVersion = (2,0,0), rbInstallName = "ruby2.0", rbIncludes = ["/usr/include/ruby-2.0.0","/usr/include/ruby-2.0.0/x86_64-linux-gnu"], rbLib = "/usr/lib", rbLibName = "ruby-2.0"}
 
 type RubyVersion = (Int, Int, Int)
 data RubyInfo = RubyInfo { rbVersion     :: RubyVersion
@@ -26,7 +30,9 @@ data RubyInfo = RubyInfo { rbVersion     :: RubyVersion
 evalRuby :: String            -- expression to evaluate
          -> IO (Maybe String) -- stdout, if successfull
 evalRuby exp = do
-    (exitCode, out, err) <- readProcessWithExitCode "ruby" ["-e", exp] ""
+    let getruby [] = return (ExitFailure 3, "beuh", undefined)
+        getruby (x:xs) = readProcessWithExitCode x ["-e", exp] "" `catch` \ (_ :: IOException) -> getruby xs
+    (exitCode, out, err) <- getruby [ "ruby2.1", "ruby2.0", "ruby2", "ruby1.8", "ruby"]
     return $ if exitCode == ExitSuccess
                then Just out
                else Nothing
@@ -49,12 +55,14 @@ getRubyInfo = do
         Just v -> do
             installName <- evalRuby "print RbConfig::CONFIG['RUBY_INSTALL_NAME']"
             headerDir   <- evalRuby "print RbConfig::CONFIG['rubyhdrdir']"
-            archDir     <- evalRuby "print RbConfig::CONFIG['rubyhdrdir'] + File::Separator + RbConfig::CONFIG['arch']"
+            headerDir'  <- evalRuby "print RbConfig::CONFIG['rubyhdrdir'] + File::Separator + 'ruby'"
+            archDir     <- evalRuby "print RbConfig::CONFIG['rubyarchhdrdir']"
             libDir      <- evalRuby "print RbConfig::CONFIG['libdir']"
+            td          <- evalRuby "print RbConfig::CONFIG['topdir']"
             libName     <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO'].sub(/^lib/,'').sub(/\\.(so|dll|dylib)([.0-9]+)?$/,'')"
             return $ RubyInfo <$> pure v
                               <*> installName
-                              <*> sequence [headerDir, archDir]
+                              <*> sequence [headerDir, headerDir', archDir, td]
                               <*> libDir
                               <*> libName
 
