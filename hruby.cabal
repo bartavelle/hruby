@@ -9,7 +9,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Simon Marechal
 maintainer:          bartavelle@gmail.com
--- copyright:           
+-- copyright:
 category:            Language
 build-type:          Custom
 cabal-version:       >=1.8
@@ -30,7 +30,7 @@ library
                         , bytestring           >= 0.10.0.2
                         , text                 >= 0.11
                         , attoparsec           >= 0.11 && < 0.14
-                        , vector               >= 0.10 && < 0.11
+                        , vector               >= 0.10
                         , unordered-containers >= 0.2 && < 0.3
                         , stm                  >= 2.4 && < 2.5
                         , scientific           >= 0.2 && < 0.4
@@ -48,5 +48,3 @@ Test-Suite test-roundtrip
   extensions:     OverloadedStrings
   build-depends:  base >= 4.6 && < 4.9,hruby,aeson,QuickCheck,text,attoparsec,vector
   main-is:        roundtrip.hs
-
-
