@@ -2,3 +2,4 @@
 cabal.sandbox.config
 .cabal-sandbox/
 /.stack-work
+Foreign/Ruby/Safe_stub.h
