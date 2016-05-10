@@ -20,6 +20,8 @@ int rubyType(VALUE obj);
 VALUE int2num(long x);
 long num2long(VALUE v);
 double num2dbl(VALUE v);
+VALUE id2sym(ID i);
+ID sym2id(VALUE v);
 
 #ifdef RUBY18
 #define RUBY_T_NONE   T_NONE

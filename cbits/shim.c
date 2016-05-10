@@ -18,6 +18,14 @@ void ruby_initialization(void) {
 #endif
 }
 
+VALUE id2sym(ID i) {
+	return ID2SYM(i);
+}
+
+ID sym2id(VALUE v) {
+	return SYM2ID(v);
+}
+
 VALUE safeCall(VALUE args)
 {
 	struct s_dispatch * d = (struct s_dispatch *) args;
