@@ -2,7 +2,7 @@
 --  see http://haskell.org/cabal/users-guide/
 
 name:                hruby
-version:             0.3.4
+version:             0.3.4.1
 synopsis:            Embed a Ruby intepreter in your Haskell program !
 description:         This doesn't work with Ruby 1.9. Everything you need should be in Foreign.Ruby.Safe.
 license:             BSD3
@@ -46,5 +46,5 @@ Test-Suite test-roundtrip
   ghc-options:    -Wall -threaded
   -- ghc-prof-options:     -caf-all -auto-all
   extensions:     OverloadedStrings
-  build-depends:  base >= 4.6 && < 4.9,hruby,aeson,QuickCheck,text,attoparsec,vector
+  build-depends:  base >= 4.6 && < 5,hruby,aeson,QuickCheck,text,attoparsec,vector
   main-is:        roundtrip.hs
