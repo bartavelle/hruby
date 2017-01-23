@@ -55,14 +55,13 @@ getRubyInfo = do
         Just v -> do
             installName <- evalRuby "print RbConfig::CONFIG['RUBY_INSTALL_NAME']"
             headerDir   <- evalRuby "print RbConfig::CONFIG['rubyhdrdir']"
-            headerDir'  <- evalRuby "print RbConfig::CONFIG['rubyhdrdir'] + File::Separator + 'ruby'"
             archDir     <- evalRuby "print RbConfig::CONFIG['rubyarchhdrdir']"
             libDir      <- evalRuby "print RbConfig::CONFIG['libdir']"
             td          <- evalRuby "print RbConfig::CONFIG['topdir']"
             libName     <- evalRuby "print RbConfig::CONFIG['LIBRUBY_SO'].sub(/^lib/,'').sub(/\\.(so|dll|dylib)([.0-9]+)?$/,'')"
             return $ RubyInfo <$> pure v
                               <*> installName
-                              <*> sequence [headerDir, headerDir', archDir, td]
+                              <*> sequence [headerDir, archDir, td]
                               <*> libDir
                               <*> libName
 
