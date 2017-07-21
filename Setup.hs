@@ -32,7 +32,7 @@ evalRuby :: String            -- expression to evaluate
 evalRuby exp = do
     let getruby [] = return (ExitFailure 3, "beuh", undefined)
         getruby (x:xs) = readProcessWithExitCode x ["-e", exp] "" `catch` \ (_ :: IOException) -> getruby xs
-    (exitCode, out, err) <- getruby [ "ruby2.1", "ruby2.0", "ruby2", "ruby1.8", "ruby"]
+    (exitCode, out, err) <- getruby [ "ruby.ruby2.4", "ruby2.4", "ruby2.1", "ruby2.0", "ruby2", "ruby1.8", "ruby"]
     return $ if exitCode == ExitSuccess
                then Just out
                else Nothing
