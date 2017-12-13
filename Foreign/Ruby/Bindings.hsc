@@ -97,7 +97,7 @@ foreign import ccall   safe "rb_funcall"                c_rb_funcall_2          
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_3              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> IO RValue
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_4              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> IO RValue
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_5              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> RValue -> IO RValue
-foreign import ccall   safe "rb_funcall_with_block"     c_rb_funcall_with_block     :: RValue -> RID -> Int -> Ptr RValue -> RValue
+foreign import ccall   safe "rb_funcall_with_block"     c_rb_funcall_with_block     :: RValue -> RID -> Int -> Ptr RValue -> IO RValue
 foreign import ccall unsafe "rb_gv_get"                 c_rb_gv_get                 :: CString -> IO RValue
 foreign import ccall unsafe "rb_intern"                 c_rb_intern                 :: CString -> IO RID
 foreign import ccall unsafe "rb_id2name"                rb_id2name                  :: RID -> IO CString
