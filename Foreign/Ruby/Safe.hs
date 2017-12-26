@@ -40,6 +40,7 @@ import Control.Exception.Base
 import Control.Concurrent.STM
 import Control.Monad
 import Foreign.Ruby.Bindings
+import Prelude
 
 type NoOutput = TMVar (Maybe RubyError)
 
