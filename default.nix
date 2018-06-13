@@ -1,15 +1,20 @@
-{ mkDerivation, aeson, attoparsec, base, bytestring, QuickCheck
-, scientific, stdenv, stm, text, unordered-containers, vector, ruby_2_1
+{ mkDerivation, aeson, attoparsec, base, bytestring, Cabal, process
+, QuickCheck, ruby, scientific, stdenv, stm, text
+, unordered-containers, vector
 }:
 mkDerivation {
   pname = "hruby";
-  version = "0.3.1";
-  sha256 = "1w13j70r6b66nyjj2fsa1z1m5p8v0zil6jf31x0h0f222x4fvmih";
-  buildDepends = [
+  version = "0.3.5.2";
+  src = ./.;
+  setupHaskellDepends = [ base Cabal process ];
+  libraryHaskellDepends = [
     aeson attoparsec base bytestring scientific stm text
-    unordered-containers vector ruby_2_1
+    unordered-containers vector
   ];
-  testDepends = [ aeson attoparsec base QuickCheck text vector ];
+  librarySystemDepends = [ ruby ];
+  testHaskellDepends = [
+    aeson attoparsec base QuickCheck text vector
+  ];
   description = "Embed a Ruby intepreter in your Haskell program !";
   license = stdenv.lib.licenses.bsd3;
 }
