@@ -191,7 +191,7 @@ rb_define_global_function s f i = withCString s (\cs -> c_rb_define_global_funct
 -- | Defines an instance method.
 --
 -- The Haskell function must accept the receiver as the first argument.
--- The type of the arguments must be `RValue`.
+-- If @argc >= 0@, the type of the arguments of the function must be `RValue`.
 rb_define_method
   :: RValue   -- ^ Object to which a method is added
   -> String   -- ^ Name of the method
