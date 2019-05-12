@@ -11,7 +11,7 @@ maintainer:          bartavelle@gmail.com
 category:            Language
 build-type:          Custom
 extra-source-files:  test/*.rb
-Tested-With:         GHC == 8.0.2, GHC == 8.2.2
+Tested-With:         GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.4
 
 custom-setup
   setup-depends: Cabal, base, process
