@@ -108,6 +108,8 @@ foreign import ccall unsafe "&rb_cObject"               rb_cObject              
 foreign import ccall unsafe "rb_iv_set"                 c_rb_iv_set                 :: RValue -> CString -> RValue -> IO RValue
 foreign import ccall   safe "rb_define_class"           c_rb_define_class           :: CString -> RValue -> IO RValue
 foreign import ccall   safe "rb_define_method"          c_rb_define_method          :: RValue -> CString -> FunPtr a -> Int -> IO ()
+foreign import ccall   safe "rb_define_singleton_method" c_rb_define_singleton_method :: RValue -> CString -> FunPtr a -> Int -> IO ()
+foreign import ccall   safe "rb_define_module_function" c_rb_define_module_function :: RValue -> CString -> FunPtr a -> Int -> IO ()
 foreign import ccall   safe "rb_define_global_function" c_rb_define_global_function :: CString -> FunPtr a -> Int -> IO ()
 foreign import ccall unsafe "rb_const_get"              rb_const_get                :: RValue -> RID -> IO RValue
 foreign import ccall   safe "&safeCall"                 safeCallback                :: FunPtr (RValue -> IO RValue)
@@ -186,8 +188,29 @@ rb_define_global_function :: String -- ^ Name of the function
                           -> IO ()
 rb_define_global_function s f i = withCString s (\cs -> c_rb_define_global_function cs f i)
 
-rb_define_method :: RValue -> String -> FunPtr a -> Int -> IO ()
+-- | Defines an instance method.
+--
+-- The Haskell function must accept the receiver as the first argument.
+-- If @argc >= 0@, the type of the arguments of the function must be `RValue`.
+rb_define_method
+  :: RValue   -- ^ Object to which a method is added
+  -> String   -- ^ Name of the method
+  -> FunPtr a -- ^ Pointer to the Haskell function (created with something like `mkRegistered1`)
+  -> Int      -- ^ @-1@, @-2@, or number of arguments the function accepts other than the receiver.
+  -> IO ()
 rb_define_method r s f i = withCString s (\cs -> c_rb_define_method r cs f i)
+
+-- | Defines a singleton method.
+--
+-- Arguments are the same as 'rb_define_method'.
+rb_define_singleton_method :: RValue -> String -> FunPtr a -> Int -> IO ()
+rb_define_singleton_method r s f i = withCString s (\cs -> c_rb_define_singleton_method r cs f i)
+
+-- | Defines a module function (@module_function@) to a module.
+--
+-- Arguments are the same as 'rb_define_method'.
+rb_define_module_function :: RValue -> String -> FunPtr a -> Int -> IO ()
+rb_define_module_function r s f i = withCString s (\cs -> c_rb_define_module_function r cs f i)
 
 rb_define_class :: String  -> RValue -> IO RValue
 rb_define_class str rv = withCString str (\s -> c_rb_define_class s rv)
