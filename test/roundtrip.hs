@@ -3,6 +3,7 @@ module Main where
 import Foreign.Ruby
 import Data.Aeson
 import Control.Monad
+import System.Exit (exitFailure)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import qualified Data.Text as T
@@ -54,4 +55,5 @@ roundTrip i = monadicIO $ do
 main :: IO ()
 main = withRubyInterpreter $ \i -> do
     loadFile i "./test/test.rb" >>= either (error . show) return
-    quickCheckWith (stdArgs { maxSuccess = 1000 } ) (roundTrip i)
+    result <- quickCheckWithResult (stdArgs { maxSuccess = 1000 } ) (roundTrip i)
+    unless (isSuccess result) exitFailure
