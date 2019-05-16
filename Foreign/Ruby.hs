@@ -14,6 +14,7 @@ module Foreign.Ruby
   , loadFile
   , Foreign.Ruby.Safe.embedHaskellValue
   , Foreign.Ruby.Safe.safeMethodCall
+  , Foreign.Ruby.Safe.safeFunCall
   , makeSafe
   , RubyError(..)
   -- * Converting to and from Ruby values

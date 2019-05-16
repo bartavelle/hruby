@@ -15,6 +15,7 @@ module Foreign.Ruby.Safe
     , loadFile
     , embedHaskellValue
     , safeMethodCall
+    , safeFunCall
     , makeSafe
     , fromRuby
     , toRuby
@@ -115,7 +116,7 @@ makeSafe int a = do
 embedHaskellValue :: RubyInterpreter -> a -> IO (Either RubyError RValue)
 embedHaskellValue int v = makeSafe int $ FR.embedHaskellValue v
 
--- | A safe version of the corresponding "Foreign.Ruby" function.
+-- | A safe version of the corresponding "Foreign.Ruby.Helper" function.
 safeMethodCall :: RubyInterpreter
                -> String
                -> String
@@ -123,6 +124,19 @@ safeMethodCall :: RubyInterpreter
                -> IO (Either RubyError RValue)
 safeMethodCall int className methodName args = do
     o <- makeSafe int $ FR.safeMethodCall className methodName args
+    case o of
+        Left x -> return (Left x)
+        Right (Right v) -> return (Right v)
+        Right (Left (s,v)) -> return (Left (WithOutput s v))
+
+-- | A safe version of the corresponding "Foreign.Ruby.Helper" function.
+safeFunCall :: RubyInterpreter
+            -> RValue
+            -> String
+            -> [RValue]
+            -> IO (Either RubyError RValue)
+safeFunCall int receiver methodName args = do
+    o <- makeSafe int $ FR.safeFunCall receiver methodName args
     case o of
         Left x -> return (Left x)
         Right (Right v) -> return (Right v)
