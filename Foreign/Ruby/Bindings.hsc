@@ -111,6 +111,7 @@ foreign import ccall   safe "rb_define_module_function" c_rb_define_module_funct
 foreign import ccall   safe "rb_define_global_function" c_rb_define_global_function :: CString -> FunPtr a -> Int -> IO ()
 foreign import ccall unsafe "rb_const_get"              rb_const_get                :: RValue -> RID -> IO RValue
 foreign import ccall   safe "&safeCall"                 safeCallback                :: FunPtr (RValue -> IO RValue)
+foreign import ccall   safe "&getRubyCObject"           getRubyCObjectCallback      :: FunPtr (RValue -> IO RValue)
 foreign import ccall   safe "rb_protect"                c_rb_protect                :: FunPtr (RValue -> IO RValue) -> RValue -> Ptr Int -> IO RValue
 foreign import ccall unsafe "rb_string_value_cstr"      c_rb_string_value_cstr      :: Ptr RValue -> IO CString
 foreign import ccall unsafe "rb_ary_new"                rb_ary_new                  :: IO RValue

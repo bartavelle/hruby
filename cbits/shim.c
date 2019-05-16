@@ -32,6 +32,11 @@ VALUE safeCall(VALUE args)
 	return rb_funcall2(d->receiver, d->methodid, d->nbargs, d->args);
 }
 
+VALUE getRubyCObject(VALUE name)
+{
+	return rb_const_get(rb_cObject, rb_intern((const char*) name));
+}
+
 long arrayLength(VALUE r)
 {
 	return RARRAY_LEN(r);
@@ -60,4 +65,3 @@ long num2long(VALUE v) {
 double num2dbl(VALUE v) {
 	NUM2DBL(v);
 }
-

@@ -4,6 +4,7 @@ module Foreign.Ruby.Helpers where
 import Foreign.Ruby.Bindings
 
 import Foreign
+import Foreign.C (withCString)
 import Data.Aeson
 import Control.Monad
 import qualified Data.Text as T
@@ -190,14 +191,29 @@ runscript filename = do
 defineGlobalClass :: String -> IO RValue
 defineGlobalClass s = peek rb_cObject >>= rb_define_class s
 
+-- | Gets a Ruby class, capturing errors.
+safeGetClass :: String -> IO (Either (String, RValue) RValue)
+safeGetClass s =
+  withCString s $ \cs ->
+  with 0 $ \pstatus -> do
+    o <- c_rb_protect getRubyCObjectCallback (castPtr cs) pstatus
+    status <- peek pstatus
+    if status == 0
+      then pure $ Right o
+      else do
+        err <- showErrorStack
+        pure $ Left (err, o)
+
 -- | Runs a Ruby singleton method, capturing errors.
 safeMethodCall :: String -- ^ Name of a class or a module.
                -> String -- ^ Method name.
                -> [RValue] -- ^ Arguments. Please note that the maximum number of arguments is 16.
                -> IO (Either (String, RValue) RValue) -- ^ Returns either an error message / value couple, or the value returned by the function.
 safeMethodCall classname methodname args = do
-  recv <- getClass classname
-  safeFunCall recv methodname args
+  erecv <- safeGetClass classname
+  case erecv of
+    Right recv -> safeFunCall recv methodname args
+    Left err -> pure $ Left err
 
 -- | Runs a Ruby method, capturing errors.
 safeFunCall
