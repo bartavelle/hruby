@@ -29,9 +29,7 @@ ID sym2id(VALUE v) {
 VALUE safeCall(VALUE args)
 {
 	struct s_dispatch * d = (struct s_dispatch *) args;
-	VALUE myclass = rb_const_get(rb_cObject, d->classid);
-	VALUE o = rb_funcall2(myclass, d->methodid, d->nbargs, d->args);
-	return o;
+	return rb_funcall2(d->receiver, d->methodid, d->nbargs, d->args);
 }
 
 long arrayLength(VALUE r)

@@ -14,15 +14,15 @@ type RValue = Ptr CULong
 -- | The Ruby ID type, mostly used for symbols.
 type RID = CULong
 
-data ShimDispatch = ShimDispatch RID RID [RValue]
+data ShimDispatch = ShimDispatch RValue RID [RValue]
 instance Storable ShimDispatch where
     sizeOf _ = (#size struct s_dispatch)
     alignment = sizeOf
-    peek ptr = do a <- peek ((#ptr struct s_dispatch, classid) ptr)
+    peek ptr = do a <- peek ((#ptr struct s_dispatch, receiver) ptr)
                   b <- peek ((#ptr struct s_dispatch, methodid) ptr)
                   return (ShimDispatch a b [])
     poke ptr (ShimDispatch c m vals) = do
-        (#poke struct s_dispatch, classid) ptr c
+        (#poke struct s_dispatch, receiver) ptr c
         (#poke struct s_dispatch, methodid) ptr m
         (#poke struct s_dispatch, nbargs) ptr (length vals)
         let arrayblock = (#ptr struct s_dispatch, args) ptr
