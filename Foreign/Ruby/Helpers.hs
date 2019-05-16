@@ -199,7 +199,9 @@ safeMethodCall classname methodname args =
     if length args > 16
         then return (Left ("too many arguments", rbNil))
         else do
-            dispatch <- new (ShimDispatch classname methodname args)
+            classid <- rb_intern classname
+            methodid <- rb_intern methodname
+            dispatch <- new (ShimDispatch classid methodid args)
             pstatus <- new 0
             o <- c_rb_protect safeCallback (castPtr dispatch) pstatus
             status <- peek pstatus
