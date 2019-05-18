@@ -14,18 +14,16 @@ type RValue = Ptr CULong
 -- | The Ruby ID type, mostly used for symbols.
 type RID = CULong
 
-data ShimDispatch = ShimDispatch String String [RValue]
+data ShimDispatch = ShimDispatch RValue RID [RValue]
 instance Storable ShimDispatch where
     sizeOf _ = (#size struct s_dispatch)
     alignment = sizeOf
-    peek ptr = do a <- peekCString ((#ptr struct s_dispatch, classname) ptr)
-                  b <- peekCString ((#ptr struct s_dispatch, methodname) ptr)
+    peek ptr = do a <- peek ((#ptr struct s_dispatch, receiver) ptr)
+                  b <- peek ((#ptr struct s_dispatch, methodid) ptr)
                   return (ShimDispatch a b [])
     poke ptr (ShimDispatch c m vals) = do
-        cs <- newCString c
-        cm <- newCString m
-        (#poke struct s_dispatch, classname) ptr cs
-        (#poke struct s_dispatch, methodname) ptr cm
+        (#poke struct s_dispatch, receiver) ptr c
+        (#poke struct s_dispatch, methodid) ptr m
         (#poke struct s_dispatch, nbargs) ptr (length vals)
         let arrayblock = (#ptr struct s_dispatch, args) ptr
         pokeArray arrayblock vals
@@ -113,6 +111,7 @@ foreign import ccall   safe "rb_define_module_function" c_rb_define_module_funct
 foreign import ccall   safe "rb_define_global_function" c_rb_define_global_function :: CString -> FunPtr a -> Int -> IO ()
 foreign import ccall unsafe "rb_const_get"              rb_const_get                :: RValue -> RID -> IO RValue
 foreign import ccall   safe "&safeCall"                 safeCallback                :: FunPtr (RValue -> IO RValue)
+foreign import ccall   safe "&getRubyCObject"           getRubyCObjectCallback      :: FunPtr (RValue -> IO RValue)
 foreign import ccall   safe "rb_protect"                c_rb_protect                :: FunPtr (RValue -> IO RValue) -> RValue -> Ptr Int -> IO RValue
 foreign import ccall unsafe "rb_string_value_cstr"      c_rb_string_value_cstr      :: Ptr RValue -> IO CString
 foreign import ccall unsafe "rb_ary_new"                rb_ary_new                  :: IO RValue

@@ -29,11 +29,12 @@ ID sym2id(VALUE v) {
 VALUE safeCall(VALUE args)
 {
 	struct s_dispatch * d = (struct s_dispatch *) args;
-	VALUE myclass = rb_const_get(rb_cObject, rb_intern(d->classname));
-	VALUE o = rb_funcall2(myclass, rb_intern(d->methodname), d->nbargs, d->args);
-	free(d->methodname);
-	free(d->classname);
-	return o;
+	return rb_funcall2(d->receiver, d->methodid, d->nbargs, d->args);
+}
+
+VALUE getRubyCObject(VALUE name)
+{
+	return rb_const_get(rb_cObject, rb_intern((const char*) name));
 }
 
 long arrayLength(VALUE r)
@@ -64,4 +65,3 @@ long num2long(VALUE v) {
 double num2dbl(VALUE v) {
 	NUM2DBL(v);
 }
-

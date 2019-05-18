@@ -6,8 +6,8 @@
 void ruby_initialization(void);
 
 struct s_dispatch {
-	char * classname;
-	char * methodname;
+	VALUE receiver;
+	ID methodid;
 	int nbargs;
 	VALUE args[16];
 };
