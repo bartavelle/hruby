@@ -28,7 +28,10 @@ before_cache:
 matrix:
   include:
     - compiler: ghc-8.8.1
-      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.8.1","cabal-install-3.0", "ruby2.5-dev"]}}
+      before_install:
+        - sudo add-apt-repository ppa:hvr/ghc -y
+        - sudo apt update
+        - sudo apt install -y ghc-8.8.1 cabal-install-3.0 ruby-2.5-dev
     - compiler: ghc-8.6.5
       addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.6.5","cabal-install-3.0", "ruby2.5-dev"]}}
     - compiler: ghc-8.4.4
