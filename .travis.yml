@@ -27,15 +27,15 @@ before_cache:
 matrix:
   include:
     - compiler: ghc-8.8.1
-      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.8.1","cabal-install-3.0", "ruby2.5-dev"]}}
+      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.8.1","cabal-install-3.0", "ruby2.3-dev", "libruby2.3"]}}
     - compiler: ghc-8.6.5
-      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.6.5","cabal-install-3.0", "ruby2.5-dev"]}}
+      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.6.5","cabal-install-3.0", "ruby2.3-dev", "libruby2.3"]}}
     - compiler: ghc-8.4.4
-      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.4.4","cabal-install-3.0", "ruby2.5-dev"]}}
+      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.4.4","cabal-install-3.0", "ruby2.3-dev", "libruby2.3"]}}
     - compiler: ghc-8.2.2
-      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.2.2","cabal-install-3.0", "ruby2.5-dev"]}}
+      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.2.2","cabal-install-3.0", "ruby2.3-dev", "libruby2.3"]}}
     - compiler: ghc-8.0.2
-      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.0.2","cabal-install-3.0", "ruby2.5-dev"]}}
+      addons: {"apt":{"sources":["hvr-ghc"],"packages":["ghc-8.0.2","cabal-install-3.0", "ruby2.3-dev", "libruby2.3"]}}
 before_install:
   - HC=$(echo "/opt/$CC/bin/ghc" | sed 's/-/\//')
   - WITHCOMPILER="-w $HC"
