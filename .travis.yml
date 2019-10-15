@@ -7,7 +7,7 @@
 # version: 0.5.20190916
 #
 language: c
-dist: xenial
+dist: bionic
 git:
   # whether to recursively clone submodules
   submodules: false
