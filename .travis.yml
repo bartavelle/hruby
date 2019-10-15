@@ -40,7 +40,8 @@ matrix:
 before_install:
   - sudo add-apt-repository ppa:hvr/ghc -y
   - sudo apt update
-  - sudo apt install -y "$COMP" cabal-install-3.0 ruby2.5-dev
+  - dpkg -l
+  - sudo apt install -y "$COMP" cabal-install-3.0 ruby2.5-dev libruby2.5
   - HC=$(echo "/opt/$CC/bin/ghc" | sed 's/-/\//')
   - WITHCOMPILER="-w $HC"
   - HADDOCK=$(echo "/opt/$CC/bin/haddock" | sed 's/-/\//')
