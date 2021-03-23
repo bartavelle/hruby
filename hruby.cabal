@@ -1,6 +1,6 @@
 cabal-version:       >= 1.10
 name:                hruby
-version:             0.3.8
+version:             0.3.8.1
 synopsis:            Embed a Ruby intepreter in your Haskell program !
 description:         This doesn't work with Ruby 1.9. Everything you need should be in Foreign.Ruby.Safe.
 license:             BSD3
@@ -28,7 +28,7 @@ library
                         , aeson                >= 0.7
                         , bytestring           >= 0.10.0.2
                         , text                 >= 0.11
-                        , attoparsec           >= 0.11 && < 0.14
+                        , attoparsec           >= 0.11 && < 0.15
                         , vector               >= 0.10
                         , unordered-containers >= 0.2 && < 0.3
                         , stm                  >= 2.4 && < 2.6
