@@ -2,6 +2,7 @@ module Main where
 
 import Control.Monad
 import Data.Aeson
+import Data.Aeson.Key (fromText)
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Foreign.Ruby
@@ -29,7 +30,7 @@ n = fmap (Number . fromIntegral) (arbitrary :: Gen Integer)
 
 h :: Gen Value
 h = fmap object $ do
-  k <- listOf str
+  k <- map fromText <$> listOf str
   v <- listOf subvalue
   return (zip k v)
 
@@ -45,10 +46,7 @@ roundTrip i = monadicIO $ do
       nxt <- safeMethodCall i "TestClass" "testfunc" [rub]
       case nxt of
         Right x -> do
-          out <-
-            fromRuby i x >>= \r -> case r of
-              Right r' -> return r'
-              Left rr -> error (show rr)
+          out <- fromRuby i x >>= either (error . show) pure
           when (out /= v) (print out)
           return (v == out)
         Left rr -> print rr >> return False

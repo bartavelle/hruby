@@ -1,15 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Foreign.Ruby.Helpers where
 
 import Control.Monad
 import Data.Aeson
+import Data.Aeson.Key (coercionToText, fromText, toText)
+import qualified Data.Aeson.KeyMap as KM
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.HashMap.Strict as HM
 import Data.IORef
 import Data.Scientific
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import Data.Type.Coercion (coerceWith)
 import qualified Data.Vector as V
 import Foreign
 import Foreign.C (withCString)
@@ -90,6 +93,9 @@ instance FromRuby Int where
 instance ToRuby Int where
   toRuby = toRubyIntegral
 
+instance FromRuby Key where
+  fromRuby = fmap (fmap fromText) . fromRuby @T.Text
+
 -- | This is the most complete instance that is provided in this module.
 -- Please note that it is far from being sufficient for even basic
 -- requirements. For example, the `Value` type can only encode
@@ -127,7 +133,7 @@ instance FromRuby Value where
               case (vk, vv) of
                 (Right jk, Right jv) -> writeIORef var ((jk, jv) : vvar) >> return 0
                 _ -> return 1
-            toHash = Object . HM.fromList
+            toHash = Object . KM.fromList
         wappender <- mkRegisteredCB3 appender
         rb_hash_foreach v wappender rbNil
         freeHaskellFunPtr wappender
@@ -150,11 +156,16 @@ instance ToRuby Value where
   toRuby (Array ar) = toRuby (V.toList ar)
   toRuby (Object m) = do
     hash <- rb_hash_new
-    forM_ (HM.toList m) $ \(k, v) -> do
+    forM_ (KM.toList m) $ \(k, v) -> do
       rk <- toRuby k
       rv <- toRuby v
       rb_hash_aset hash rk rv
     return hash
+
+instance ToRuby Key where
+  toRuby k = toRuby $ case coercionToText of
+    Nothing -> toText k
+    Just co -> coerceWith co k
 
 -- | An unsafe version of the corresponding "Foreign.Ruby.Safe" function.
 embedHaskellValue :: a -> IO RValue
