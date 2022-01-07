@@ -79,15 +79,9 @@ foreign import ccall "wrapper" mkRegisteredCB3 :: RegisteredCB3 -> IO (FunPtr Re
 
 foreign import ccall "ruby_finalize"             ruby_finalize               :: IO ()
 foreign import ccall "ruby_initialization"       ruby_initialization         :: IO ()
-#ifdef RUBY21
 foreign import ccall "rb_str_new_cstr"           c_rb_str_new2               :: CString -> IO RValue
 foreign import ccall "rb_ary_new_capa"           rb_ary_new2                 :: CLong -> IO RValue
 foreign import ccall "rb_ary_new_from_values"    rb_ary_new4                 :: CLong -> Ptr RValue -> IO RValue
-#else
-foreign import ccall "rb_str_new2"               c_rb_str_new2               :: CString -> IO RValue
-foreign import ccall "rb_ary_new2"               rb_ary_new2                 :: CLong -> IO RValue
-foreign import ccall "rb_ary_new4"               rb_ary_new4                 :: CLong -> Ptr RValue -> IO RValue
-#endif
 foreign import ccall   safe "rb_load_protect"           c_rb_load_protect           :: RValue -> Int -> Ptr Int -> IO ()
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_0              :: RValue -> RID -> Int -> IO RValue
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_1              :: RValue -> RID -> Int -> RValue -> IO RValue
@@ -95,9 +89,7 @@ foreign import ccall   safe "rb_funcall"                c_rb_funcall_2          
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_3              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> IO RValue
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_4              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> IO RValue
 foreign import ccall   safe "rb_funcall"                c_rb_funcall_5              :: RValue -> RID -> Int -> RValue -> RValue -> RValue -> RValue -> RValue -> IO RValue
-#ifdef RUBY2
 foreign import ccall   safe "rb_funcall_with_block"     c_rb_funcall_with_block     :: RValue -> RID -> Int -> Ptr RValue -> RValue -> IO RValue
-#endif
 foreign import ccall unsafe "rb_gv_get"                 c_rb_gv_get                 :: CString -> IO RValue
 foreign import ccall unsafe "rb_intern"                 c_rb_intern                 :: CString -> IO RID
 foreign import ccall unsafe "rb_id2name"                rb_id2name                  :: RID -> IO CString
@@ -135,17 +127,10 @@ foreign import ccall unsafe "id2sym"             id2sym                      :: 
 foreign import ccall unsafe "sym2id"             sym2id                      :: RValue -> RID
 
 rbFalse,rbTrue,rbNil,rbUndef :: RValue
-#ifdef RUBY2
 rbFalse = intPtrToPtr 0x00
 rbTrue  = intPtrToPtr 0x14
 rbNil   = intPtrToPtr 0x08
 rbUndef = intPtrToPtr 0x34
-#else
-rbFalse = intPtrToPtr 0
-rbTrue  = intPtrToPtr 2
-rbNil   = intPtrToPtr 4
-rbUndef = intPtrToPtr 6
-#endif
 
 rtype :: RValue -> IO RType
 rtype v = rubyType v >>= \x -> case x of

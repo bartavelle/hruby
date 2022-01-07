@@ -4,4 +4,4 @@
 
 Embed a Ruby interpreter in your Haskell program !
 
-This doesn't work with Ruby 1.9.
+This works with Ruby 2.2+.

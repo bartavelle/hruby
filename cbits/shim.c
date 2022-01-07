@@ -1,13 +1,10 @@
 #include "shim.h"
-#ifdef RUBY2
 #include <ruby/encoding.h>
-#endif
 
 void ruby_initialization(void) {
 	RUBY_INIT_STACK;
 	ruby_init();
 	ruby_init_loadpath();
-#ifdef RUBY2
 	VALUE encoding = rb_enc_from_encoding(rb_filesystem_encoding());
 	rb_enc_set_default_internal(encoding);
 	rb_enc_set_default_external(encoding);
@@ -15,7 +12,6 @@ void ruby_initialization(void) {
 	rb_encdb_declare("ASCII-8BIT");
 	rb_encdb_declare("US-ASCII");
 	rb_encdb_declare("UTF-8");
-#endif
 }
 
 VALUE id2sym(ID i) {
@@ -43,11 +39,7 @@ long arrayLength(VALUE r)
 }
 
 VALUE newFloat(double d) {
-#ifdef RUBY2
 	rb_float_new_in_heap(d);
-#else
-	rb_float_new(d);
-#endif
 }
 
 int rubyType(VALUE obj) {
