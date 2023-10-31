@@ -1,14 +1,34 @@
 module Main where
 
-import Control.Monad
-import Data.Aeson
+import Control.Monad (unless, when)
+import Data.Aeson (Value (Array, Bool, Number, String), object)
 import Data.Aeson.Key (fromText)
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import Foreign.Ruby
+import Foreign.Ruby.Safe
+  ( RubyInterpreter,
+    freezeGC,
+    fromRuby,
+    loadFile,
+    safeMethodCall,
+    toRuby,
+    withRubyInterpreter,
+  )
 import System.Exit (exitFailure)
 import Test.QuickCheck
-import Test.QuickCheck.Monadic
+  ( Arbitrary (arbitrary),
+    Args (maxSuccess),
+    Gen,
+    Property,
+    elements,
+    frequency,
+    isSuccess,
+    listOf,
+    quickCheckWithResult,
+    resize,
+    stdArgs,
+  )
+import Test.QuickCheck.Monadic (assert, monadicIO, pick, run)
 
 subvalue :: Gen Value
 subvalue = frequency [(50, s), (20, b), (20, n), (1, h), (1, a)]

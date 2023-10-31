@@ -67,7 +67,7 @@ instance FromRuby BS.ByteString where
       _ -> return (Left ("Expected a string, not " ++ show t))
 
 instance ToRuby BS.ByteString where
-  toRuby s = BS.useAsCString s c_rb_str_new2
+  toRuby s = BS.useAsCStringLen s (\(x, ln) -> c_rb_str_new x (fromIntegral ln))
 
 instance FromRuby T.Text where
   fromRuby = fmap (fmap T.decodeUtf8) . fromRuby
@@ -138,7 +138,7 @@ instance FromRuby Value where
         rb_hash_foreach v wappender rbNil
         freeHaskellFunPtr wappender
         fmap (Right . toHash) (readIORef var)
-      _ -> return $ Left ("Could not decode: " ++ show t)
+      _ -> return $ Left ("Could not decode value: " ++ show t)
 
 instance ToRuby Scientific where
   toRuby s
@@ -147,9 +147,7 @@ instance ToRuby Scientific where
 
 instance ToRuby Value where
   toRuby (Number x) = toRuby x
-  toRuby (String t) =
-    let bs = T.encodeUtf8 t
-     in BS.useAsCString bs c_rb_str_new2
+  toRuby (String t) = toRuby t
   toRuby Null = return rbNil
   toRuby (Bool True) = return rbTrue
   toRuby (Bool False) = return rbFalse

@@ -17,7 +17,7 @@ type RID = CULong
 data ShimDispatch = ShimDispatch RValue RID [RValue]
 instance Storable ShimDispatch where
     sizeOf _ = (#size struct s_dispatch)
-    alignment = sizeOf
+    alignment _ = (#alignment struct s_dispatch)
     peek ptr = do a <- peek ((#ptr struct s_dispatch, receiver) ptr)
                   b <- peek ((#ptr struct s_dispatch, methodid) ptr)
                   return (ShimDispatch a b [])
@@ -79,6 +79,7 @@ foreign import ccall "wrapper" mkRegisteredCB3 :: RegisteredCB3 -> IO (FunPtr Re
 
 foreign import ccall "ruby_finalize"             ruby_finalize               :: IO ()
 foreign import ccall "ruby_initialization"       ruby_initialization         :: IO ()
+foreign import ccall "rb_str_new"                c_rb_str_new                :: CString -> CLong -> IO RValue
 foreign import ccall "rb_str_new_cstr"           c_rb_str_new2               :: CString -> IO RValue
 foreign import ccall "rb_ary_new_capa"           rb_ary_new2                 :: CLong -> IO RValue
 foreign import ccall "rb_ary_new_from_values"    rb_ary_new4                 :: CLong -> Ptr RValue -> IO RValue
@@ -133,30 +134,32 @@ rbNil   = intPtrToPtr 0x08
 rbUndef = intPtrToPtr 0x34
 
 rtype :: RValue -> IO RType
-rtype v = rubyType v >>= \x -> case x of
-    (#const RUBY_T_NONE)   -> return RUndef
-    (#const RUBY_T_OBJECT) -> return (RBuiltin ROBJECT)
-    (#const RUBY_T_CLASS)  -> return (RBuiltin RCLASS)
-    (#const RUBY_T_MODULE) -> return (RBuiltin RMODULE)
-    (#const RUBY_T_FLOAT)  -> return (RBuiltin RFLOAT)
-    (#const RUBY_T_STRING) -> return (RBuiltin RSTRING)
-    (#const RUBY_T_REGEXP) -> return (RBuiltin RREGEXP)
-    (#const RUBY_T_ARRAY)  -> return (RBuiltin RARRAY)
-    (#const RUBY_T_HASH)   -> return (RBuiltin RHASH)
-    (#const RUBY_T_STRUCT) -> return (RBuiltin RSTRUCT)
-    (#const RUBY_T_BIGNUM) -> return (RBuiltin RBIGNUM)
-    (#const RUBY_T_FILE)   -> return (RBuiltin RFILE)
-    (#const RUBY_T_DATA)   -> return (RBuiltin RDATA)
-    (#const RUBY_T_MATCH)  -> return (RBuiltin RMATCH)
-    (#const RUBY_T_NIL)    -> return RNil
-    (#const RUBY_T_TRUE)   -> return RTrue
-    (#const RUBY_T_FALSE)  -> return RFalse
-    (#const RUBY_T_SYMBOL) -> return RSymbol
-    (#const RUBY_T_FIXNUM) -> return RFixNum
-    (#const RUBY_T_UNDEF)  -> return (RBuiltin RUNDEF)
-    (#const RUBY_T_NODE)   -> return (RBuiltin RNODE)
-    (#const RUBY_T_ICLASS) -> return (RBuiltin RICLASS)
-    _                      -> return RUndef
+rtype v = cnv <$> rubyType v 
+ where
+    cnv x = case x of
+        (#const RUBY_T_NONE)   -> RUndef
+        (#const RUBY_T_OBJECT) -> RBuiltin ROBJECT
+        (#const RUBY_T_CLASS)  -> RBuiltin RCLASS
+        (#const RUBY_T_MODULE) -> RBuiltin RMODULE
+        (#const RUBY_T_FLOAT)  -> RBuiltin RFLOAT
+        (#const RUBY_T_STRING) -> RBuiltin RSTRING
+        (#const RUBY_T_REGEXP) -> RBuiltin RREGEXP
+        (#const RUBY_T_ARRAY)  -> RBuiltin RARRAY
+        (#const RUBY_T_HASH)   -> RBuiltin RHASH
+        (#const RUBY_T_STRUCT) -> RBuiltin RSTRUCT
+        (#const RUBY_T_BIGNUM) -> RBuiltin RBIGNUM
+        (#const RUBY_T_FILE)   -> RBuiltin RFILE
+        (#const RUBY_T_DATA)   -> RBuiltin RDATA
+        (#const RUBY_T_MATCH)  -> RBuiltin RMATCH
+        (#const RUBY_T_NIL)    -> RNil
+        (#const RUBY_T_TRUE)   -> RTrue
+        (#const RUBY_T_FALSE)  -> RFalse
+        (#const RUBY_T_SYMBOL) -> RSymbol
+        (#const RUBY_T_FIXNUM) -> RFixNum
+        (#const RUBY_T_UNDEF)  -> RBuiltin RUNDEF
+        (#const RUBY_T_NODE)   -> RBuiltin RNODE
+        (#const RUBY_T_ICLASS) -> RBuiltin RICLASS
+        _                      -> RUndef
 
 rb_string_value_cstr :: RValue -> IO String
 rb_string_value_cstr v = do
@@ -200,7 +203,7 @@ rb_define_class :: String  -> RValue -> IO RValue
 rb_define_class str rv = withCString str (\s -> c_rb_define_class s rv)
 
 rb_str_new2 :: String -> IO RValue
-rb_str_new2 str = withCString str c_rb_str_new2
+rb_str_new2 str = withCStringLen str (\(x, ln) -> c_rb_str_new x (fromIntegral ln))
 
 rb_define_module :: String -> IO ()
 rb_define_module str = withCString str c_rb_define_module
