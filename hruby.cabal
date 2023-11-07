@@ -13,9 +13,6 @@ build-type:          Custom
 extra-source-files:  test/*.rb
 Tested-With:         GHC == 8.8.1, GHC == 8.10.2, GHC == 9.0.1
 
-custom-setup
-  setup-depends: Cabal, base, process
-
 source-repository head
   type: git
   location: git://github.com/bartavelle/hruby.git
