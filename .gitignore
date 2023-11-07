@@ -6,3 +6,4 @@ cabal.sandbox.config
 /.stack-work
 Foreign/Ruby/Safe_stub.h
 stack.yaml
+.vscode
