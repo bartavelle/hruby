@@ -1,7 +1,7 @@
 cabal-version:       >= 1.10
 name:                hruby
 version:             0.5.1.0
-synopsis:            Embed a Ruby intepreter in your Haskell program !
+synopsis:            Embed a Ruby interpreter in your Haskell program!
 description:         This works with Ruby 2.2+. Everything you need should be in Foreign.Ruby.Safe.
 license:             BSD3
 license-file:        LICENSE
